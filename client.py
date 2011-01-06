@@ -23,6 +23,7 @@ class Client(object):
         self.win = window.Window(wid)
 
         self._unmapped = True
+        self.catchall = False # Temp
 
         self.frame = self.determine_frame()(self)
         #self.frame = frame.Nada(self)
@@ -111,10 +112,16 @@ class Client(object):
 
     def focused(self):
         focus.above(self)
-        self.frame.activate()
+        self.frame.set_state(frame.State.Active)
 
     def unfocused(self):
-        self.frame.deactivate()
+        if (self.catchall and
+            frame.State.CatchAll not in self.frame.allowed_states):
+            self.catchall = False
+
+        self.frame.set_state(
+            frame.State.CatchAll if self.catchall else
+            frame.State.Inactive)
 
     def decorate(self, border=False, slim=False):
         if border:
@@ -135,8 +142,12 @@ class Client(object):
         focus.add(self)
         layers.default.add(self)
         self.layer.stack()
-        self.frame.map()
+
+        state.grab()
         self.win.map()
+        self.frame.map()
+        state.ungrab()
+
         self.focus()
 
         self._unmapped = False
@@ -162,10 +173,21 @@ class Client(object):
 
     def toggle_decorations(self):
         if (isinstance(self.frame, frame.Border) or
-            isinstance(self.frame, frame.Full)):
+            isinstance(self.frame, frame.Full) or
+            isinstance(self.frame, frame.SlimBorder)):
             self.undecorate()
         else:
             self.decorate()
+
+    def toggle_catchall(self):
+        if frame.State.CatchAll not in self.frame.allowed_states:
+            return
+
+        self.catchall = not self.catchall
+        if self is not focus.focused():
+            self.frame.set_state(
+                frame.State.CatchAll if self.catchall else
+                frame.State.Inactive)
 
     # Determinations
 
@@ -219,7 +241,27 @@ class Client(object):
         return self.frame.move_end(e.root_x, e.root_y)
 
     def cb_ConfigureRequestEvent(self, e):
-        pass
+        x = y = width = height = border_width = sibling = stack_mode = None
+        conf = xcb.xproto.ConfigWindow
+        mask = e.value_mask
+
+        if conf.X & mask:
+            x = e.x
+        if conf.Y & mask:
+            y = e.y
+        if conf.Width & mask:
+            width = e.width
+        if conf.Height & mask:
+            height = e.height
+        if conf.BorderWidth & mask:
+            border_width = e.border_width
+        if conf.Sibling & mask:
+            sibling = e.sibling
+        if conf.StackMode & mask:
+            stack_mode = e.stack_mode
+
+        self.frame.configure(x, y, width, height, border_width, sibling,
+                             stack_mode)
 
     def cb_MapRequestEvent(self, e):
         self.map()

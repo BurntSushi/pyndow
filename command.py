@@ -1,5 +1,6 @@
-import time
+import signal
 import subprocess
+import time
 from functools import partial
 
 import xcb.xproto
@@ -10,6 +11,7 @@ import state
 import config
 import events
 import focus
+import misc
 
 save = None
 
@@ -34,6 +36,9 @@ def init():
 def spawn(exc, e):
     subprocess.Popen([exc]).pid
 
+def toggle_catchall(e):
+    focus.focused().toggle_catchall()
+
 def test1(e):
     focus.focused().decorate()
 
@@ -45,6 +50,24 @@ def test3(e):
 
 def test4(e):
     focus.focused().undecorate()
+
+def test5(e):
+    pass
+
+def test6(e):
+    pass
+
+def test7(e):
+    pass
+
+def test8(e):
+    pass
+
+def test9(e):
+    pass
+
+def test0(e):
+    pass
 
 #def test1(e):
     #client = focus.focused()

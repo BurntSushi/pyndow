@@ -97,42 +97,27 @@ class PyndowConfigParser(ConfigParser.SafeConfigParser):
 config_path = os.path.join('/home/andrew/')
 config_filename = 'config.ini'
 
+# Aliases
+gethex = PyndowConfigParser.gethex
+getint = PyndowConfigParser.getint
+
 # A list of supported options independent of section header.
 # Please do not change settings here. The settings specified here
 # are the minimal required for PyTyle to function properly.
 option_types = {
-    'decor_bg_active': {
-        'exec': PyndowConfigParser.gethex,
-        'default': 0x000000
-    },
-    'decor_bg_inactive': {
-        'exec': PyndowConfigParser.gethex,
-        'default': 0xffffff
-    },
-    'decor_title_active': {
-        'exec': PyndowConfigParser.gethex,
-        'default': 0xffffff
-    },
-    'decor_title_inactive': {
-        'exec': PyndowConfigParser.gethex,
-        'default': 0x000000
-    },
-    'decor_border_size': {
-        'exec': PyndowConfigParser.getint,
-        'default': 1
-    },
-    'decor_bottom_border_size': {
-        'exec': PyndowConfigParser.getint,
-        'default': 5
-    },
-    'decor_bottom_border_color': {
-        'exec': PyndowConfigParser.gethex,
-        'default': 0xffffff
-    },
-    'decor_thinborder_color': {
-        'exec': PyndowConfigParser.gethex,
-        'default': 0x000000
-    },
+    'frm_thinborder_clr': {'exec': gethex, 'default': 0x000000},
+    'frm_full_bg_a': {'exec': gethex, 'default': 0x000000},
+    'frm_full_title_a': {'exec': gethex, 'default': 0xffffff},
+    'frm_full_bg_i': {'exec': gethex, 'default': 0xffffff},
+    'frm_full_title_i': {'exec': gethex, 'default': 0x000000},
+    'frm_full_bottom_brdr_a': {'exec': gethex, 'default': 0xffffff},
+    'frm_full_bottom_brdr_i': {'exec': gethex, 'default': 0xffffff},
+    'frm_full_bottom_brdr_sz': {'exec': getint, 'default': 5},
+    'frm_border_bg_a': {'exec': gethex, 'default': 0xbb0000},
+    'frm_border_bg_i': {'exec': gethex, 'default': 0x008800},
+    'frm_border_bg_c': {'exec': gethex, 'default': 0x3366ff},
+    'frm_border_thin_clr': {'exec': gethex, 'default': 0x000000},
+    'frm_border_brdr_sz': {'exec': getint, 'default': 5},
     'all_tilers': {
         'exec': PyndowConfigParser.getlist,
         'default': ['Vertical']

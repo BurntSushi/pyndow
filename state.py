@@ -112,6 +112,6 @@ class Windows(object):
 
     def __iter__(self):
         for client in self.__ordered:
-            yield client
+            yield self.__mapping[client]
 
 wins = Windows()

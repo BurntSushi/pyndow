@@ -13,6 +13,15 @@ import events
 import layers
 import focus
 
+def create(parent, mask, values):
+    wid = state.conn.generate_id()
+    state.conn.core.CreateWindow(state.rsetup.root_depth, wid, parent, 0, 0, 1,
+                                 1, 0, xcb.xproto.WindowClass.InputOutput,
+                                 state.rsetup.root_visual,
+                                 mask, values)
+
+    return wid
+
 class SimpleWindow(object):
     def __init__(self, wid):
         self.id = wid
