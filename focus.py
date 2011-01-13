@@ -7,27 +7,20 @@ __stack = []
 def get_stack():
     return __stack
 
-def add(win):
-    global __stack
+def add(client):
+    assert client not in __stack
 
-    assert win not in __stack
+    __stack.append(client)
 
-    __stack.append(win)
+def remove(client):
+    if client in __stack:
+        __stack.remove(client)
 
-def remove(win):
-    global __stack
+def above(client):
+    assert client in __stack
 
-    assert win in __stack
-
-    __stack.remove(win)
-
-def above(win):
-    global __stack
-
-    assert win in __stack
-
-    __stack.remove(win)
-    __stack.append(win)
+    __stack.remove(client)
+    __stack.append(client)
 
 def fallback():
     # This is *really* important. On occasion, it seems that focus can stay
@@ -37,9 +30,15 @@ def fallback():
     if not __stack:
         state.root_focus()
     else:
-        win = __stack[-1]
-        win.stack_raise()
-        win.focus()
+        client = __stack[-1]
+
+        # If the window isn't alive, pop the stack until we get a good window
+        if client.is_alive():
+            client.stack_raise()
+            client.focus()
+        else:
+            remove(client)
+            fallback()
 
 def focused():
     if not __stack:

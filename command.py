@@ -1,11 +1,11 @@
 import signal
-import subprocess
 import time
 from functools import partial
 
 import xcb.xproto
 
 import keysym
+import icccm
 
 import state
 import config
@@ -34,7 +34,7 @@ def init():
             print 'Could not bind %s' % key_string
 
 def spawn(exc, e):
-    subprocess.Popen([exc]).pid
+    misc.spawn(exc)
 
 def toggle_catchall(e):
     focus.focused().toggle_catchall()
@@ -52,7 +52,8 @@ def test4(e):
     focus.focused().undecorate()
 
 def test5(e):
-    pass
+    client = focus.focused()
+    print client.win.wmname
 
 def test6(e):
     pass
@@ -85,18 +86,9 @@ def test0(e):
 
 def quit(e):
     state.die = True
+    misc.spawn('killall Xephyr')
 
-def down(e):
-    state.debug('BUTTON DOWN')
-    #events.unregister_keypress(down, state.root, 'f')
-    events.unregister_buttonpress(down, state.root, '1')
-
-def down2(e):
-    state.debug('DOWN2')
-    #events.unregister_keypress(down2, state.root, 'f')
-    events.unregister_buttonpress(down2, state.root, '1')
-
-def up(e):
-    state.debug('BUTTON UP')
-    #events.unregister_keyrelease(up, state.root, 'f')
-    events.unregister_buttonrelease(up, state.root, '1')
+def close(e):
+    client = focus.focused()
+    if client:
+        client.close()

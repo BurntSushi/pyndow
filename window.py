@@ -44,7 +44,7 @@ class SimpleWindow(object):
             mask |= conf.X
 
             if x < 0:
-                x = 2 ** 32 - 1 + x
+                x = 2 ** 32 + x
             values.append(x)
         if y is not None:
             self.geom['y'] = y
@@ -52,7 +52,7 @@ class SimpleWindow(object):
             mask |= conf.Y
 
             if y < 0:
-                y = 2 ** 32 - 1 + y
+                y = 2 ** 32 + y
             values.append(y)
         if width is not None:
             self.geom['width'] = width
@@ -108,12 +108,75 @@ class Window(GeometryWindow):
     def __init__(self, wid):
         GeometryWindow.__init__(self, wid)
 
+        self._properties = state.conn.core.ListProperties(self.id)
         self._protocols = icccm.get_wm_protocols(state.conn, self.id)
         self._hints = icccm.get_wm_hints(state.conn, self.id)
         self._normal_hints = icccm.get_wm_normal_hints(state.conn, self.id)
         self._class = icccm.get_wm_class(state.conn, self.id)
         self._motif = motif.get_hints(state.conn, self.id)
         self._wmname = ewmh.get_wm_name(state.conn, self.id)
+        self._wmclass = icccm.get_wm_class(state.conn, self.id)
+
+    #def is_alive(self):
+        #state.sync()
+
+        #event.read(state.conn)
+        #for e in event.peek():
+
+
+        #try:
+            #state.conn.core.GetGeometry(self.id).reply()
+        #except:
+            #return False
+
+        #return True
+
+    def validate_size(self, width, height):
+        nm = self.normal_hints
+
+        if nm['flags']['PResizeInc']:
+            if width is not None and nm['width_inc'] > 1:
+                base = nm['base_width'] or nm['min_width']
+                inc = nm['width_inc'] or 1
+                i = round((width - base) / float(inc))
+                width = base + int(i) * inc
+            if height is not None and nm['height_inc'] > 1:
+                base = nm['base_height'] or nm['min_height']
+                inc = nm['height_inc'] or 1
+                j = round((height - base) / float(inc))
+                height = base + int(j) * inc
+
+        if nm['flags']['PMinSize']:
+            if width is not None and width < nm['min_width']:
+                width = nm['min_width']
+            if height is not None and height < nm['min_height']:
+                height = nm['min_height']
+        else:
+            if width is not None and width < 1:
+                width = 1
+            if height is not None and height < 1:
+                height = 1
+
+        if nm['flags']['PMaxSize']:
+            if width is not None and width > nm['max_width']:
+                width = nm['max_width']
+            if height is not None and height > nm['max_height']:
+                height = nm['max_height']
+
+        return width, height
+
+    def configure(self, x=None, y=None, width=None, height=None,
+                  border_width=None, sibling=None, stack_mode=None,
+                  ignore_hints=False):
+        nm = self.normal_hints
+
+        if not ignore_hints:
+            width, height = self.validate_size(width, height)
+
+        GeometryWindow.configure(self, x, y, width, height, 0,
+                                 sibling, stack_mode)
+
+    # Window desires
 
     def desires_decor(self):
         if (self.motif and
@@ -127,10 +190,25 @@ class Window(GeometryWindow):
 
         return True
 
+    # Determinations
+
+    def determine_wm_name(self):
+        preferred = ewmh.get_wm_name(state.conn, self.id)
+
+    @property
+    def properties(self):
+        if isinstance(self._properties, xcb.xproto.ListPropertiesCookie):
+            self._properties = list(self._properties.reply().atoms)
+
+        return self._properties
+
     @property
     def protocols(self):
         if isinstance(self._protocols, util.PropertyCookie):
             self._protocols = self._protocols.reply()
+
+            if self._protocols is None:
+                self._protocols = []
 
         return self._protocols
 
@@ -139,6 +217,18 @@ class Window(GeometryWindow):
         if isinstance(self._hints, icccm.HintsCookie):
             self._hints = self._hints.reply()
 
+            if self._hints is None:
+                self._hints = {
+                    'flags': {'Input': True, 'State': True,
+                              'IconPixmap': False, 'IconWindow': False,
+                              'IconPosition': False, 'IconMask': False,
+                              'WindowGroup': False, 'Message': False,
+                              'Urgency': False},
+                    'input': 1, 'initial_state': icccm.State.Normal,
+                    'icon_pixmap': 0, 'icon_window': 0, 'icon_x': 0,
+                    'icon_y': 0, 'icon_mask': 0, 'window_group': 0
+                }
+
         return self._hints
 
     @property
@@ -146,7 +236,26 @@ class Window(GeometryWindow):
         if isinstance(self._normal_hints, icccm.NormalHintsCookie):
             self._normal_hints = self._normal_hints.reply()
 
+            if self._normal_hints is None:
+                self._normal_hints = {
+                    'flags': {'USPosition': False, 'USSize': False,
+                              'PPosition': False, 'PSize': False,
+                              'PMinSize': False, 'PMaxSize': False,
+                              'PResizeInc': False, 'PAspect': False,
+                              'PBaseSize': False, 'PWinGravity': False},
+                    'x': 0, 'y': 0, 'width': 1, 'height': 1,
+                    'min_width': 1, 'min_height': 1, 'max_width': 0,
+                    'max_height': 0, 'width_inc': 1, 'height_inc': 1,
+                    'min_aspect_num': 0, 'min_aspect_den': 0,
+                    'max_aspect_num': 0, 'max_aspect_den': 0, 'base_width': 0,
+                    'base_height': 0,
+                    'win_gravity': xcb.xproto.Gravity.NorthWest}
+
         return self._normal_hints
+
+    @normal_hints.setter
+    def normal_hints(self, value):
+        self._normal_hints = value
 
     @property
     def cls(self):
@@ -167,7 +276,26 @@ class Window(GeometryWindow):
         if isinstance(self._wmname, util.PropertyCookie):
             self._wmname = self._wmname.reply()
 
+            # If nothing, check WM_NAME...
+            if self._wmname is None:
+                self._wmname = icccm.get_wm_name(state.conn, self.id).reply()
+
+            # Still nothing... empty string
+            if self._wmname is None:
+                self._wmname = ''
+
         return self._wmname
+
+    @wmname.setter
+    def wmname(self, value):
+        self._wmname = value
+
+    @property
+    def wmclass(self):
+        if isinstance(self._wmclass, util.PropertyCookie):
+            self._wmclass = self._wmclass.reply()
+
+        return self._wmclass
 
 def cb_ConfigureRequestEvent(e):
     values = []
@@ -175,12 +303,20 @@ def cb_ConfigureRequestEvent(e):
     mask = e.value_mask
 
     if conf.X & mask:
+        if e.x < 0:
+            e.x = 2 ** 32 + e.x
         values.append(e.x)
     if conf.Y & mask:
+        if e.y < 0:
+            e.y = 2 ** 32 + e.y
         values.append(e.y)
     if conf.Width & mask:
+        if e.width < 1:
+            e.width = 1
         values.append(e.width)
     if conf.Height & mask:
+        if e.height < 1:
+            e.height = 1
         values.append(e.height)
     if conf.BorderWidth & mask:
         values.append(e.border_width)

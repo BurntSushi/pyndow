@@ -65,6 +65,9 @@ def grab():
 def ungrab():
     conn.core.UngrabServerChecked().check()
 
+def sync():
+    conn.core.GetInputFocus().reply()
+
 def debug(s):
     print >> d, s
     d.flush()

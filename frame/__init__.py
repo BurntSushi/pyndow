@@ -31,6 +31,7 @@ class _FrameWindow(window.GeometryWindow):
         window.GeometryWindow.__init__(self, self.id)
 
     def destroy(self):
+        events.unregister_window(self.id)
         state.conn.core.DestroyWindow(self.id)
 
     def clear(self):
@@ -57,7 +58,7 @@ class Parent(_FrameWindow):
             values = [xcb.xproto.BackPixmap.ParentRelative]
         else:
             mask |= xcb.xproto.CW.BackPixel
-            values = [bg]
+            values = [0]
         values.append(xcb.xproto.EventMask.SubstructureRedirect |
                       xcb.xproto.EventMask.ButtonPress |
                       xcb.xproto.EventMask.ButtonRelease)
@@ -72,26 +73,22 @@ class Parent(_FrameWindow):
         events.register_drag(self.frame.client.cb_move_start,
                              self.frame.client.cb_move_drag,
                              self.frame.client.cb_move_end,
-                             self.id, '1', grab=False)
-        events.register_drag(self.frame.client.cb_move_start,
-                             self.frame.client.cb_move_drag,
-                             self.frame.client.cb_move_end,
-                             self.id, 'Mod1-1', grab=False)
+                             self.id, 'Mod4-1')
         events.register_drag(self.frame.client.cb_resize_start,
                              self.frame.client.cb_resize_drag,
                              self.frame.client.cb_resize_end,
-                             self.id, 'Mod1-3', grab=False)
+                             self.id, 'Mod4-3')
 
         events.register_buttonpress([self.frame.client.cb_focus,
                                      self.frame.client.cb_stack_raise],
-                                    self.id, '1', grab=False)
+                                    self.id, '1', propagate=True)
 
     def render(self):
         if not self.nada:
             state.conn.core.ChangeWindowAttributes(
                 self.id,
                 xcb.xproto.CW.BackPixel,
-                [self.frame.colors[self.frame.state]['bg']]
+                [0]
             )
         self.clear()
 
@@ -121,23 +118,110 @@ class _Frame(object):
             self.client.win.configure(x=self.pos['client']['x'],
                                       y=self.pos['client']['y'])
 
-    def render(self):
-        pass
+    def gravitize(self, x, y):
+        retx = rety = None
+        if x is None:
+            retx = True
+            x = 0
+        if y is None:
+            rety = True
+            y =0
+
+        nm = self.client.win.normal_hints
+
+        g = nm['win_gravity']
+        gr = xcb.xproto.Gravity
+
+        if nm['flags']['PWinGravity'] and g != gr.NorthWest:
+            if g in (gr.Static, gr.BitForget):
+                x -= self.left
+                y -= self.top
+            elif g == gr.North:
+                x -= abs(self.left - self.right) / 2
+            elif g == gr.NorthEast:
+                x -= self.left + self.right
+            elif g == gr.East:
+                x -= self.left + self.right
+                y -= abs(self.top - self.bottom) / 2
+            elif g == gr.SouthEast:
+                x -= self.left + self.right
+                y -= self.top + self.bottom
+            elif g == gr.South:
+                x -= abs(self.left - self.right) / 2
+                y -= self.top + self.bottom
+            elif g == gr.SouthWest:
+                y -= self.top + self.bottom
+            elif g == gr.West:
+                y -= abs(self.top - self.bottom) / 2
+            elif g == gr.Center:
+                x -= abs(self.left - self.right) / 2
+                y -= abs(self.top - self.bottom) / 2
+            # else:
+            #   NorthWest is already assumed
+
+        return x if retx is None else None, y if rety is None else None
+
+    # Ensures that the client gets its proper width/height
+    # And gravitizes the x,y coordinates
+    def configure_client(self, x=None, y=None, width=None, height=None,
+                         border_width=None, sibling=None, stack_mode=None):
+        x, y = self.gravitize(x, y)
+
+        if width:
+            width -= self.pos['client']['width']
+        if height:
+            height -= self.pos['client']['height']
+
+        self.configure(x, y, width, height, border_width, sibling, stack_mode)
 
     def configure(self, x=None, y=None, width=None, height=None,
                   border_width=None, sibling=None, stack_mode=None):
+        cw = ch = w = h = None
+
+        # If resizing, update the client's size too. Make sure to use the
+        # proper sizes based on the current frame, and validate!
+        # Validation is used here so we know when to stop resizing the frame.
+        if width or height:
+            if width: cw = width + self.pos['client']['width']
+            if height: ch = height + self.pos['client']['height']
+
+            w, h = self.client.win.validate_size(cw, ch)
+
+            if w != cw:
+                width = (w - self.pos['client']['width'])
+            if h != ch:
+                height = (h - self.pos['client']['height'])
+
+        # The order that the following two configures doesn't seem to matter.
+        # Logically, it makes sense that when decreasing the size of a window,
+        # we should resize the frame first and then the client. Vice versa
+        # for when we increase the size of a window. But I can't really see
+        # any visible difference... Hmmm...
+
+        self.client.win.configure(x=self.pos['client']['x'],
+                                  y=self.pos['client']['y'], width=w, height=h,
+                                  ignore_hints=True)
+
         self.parent.configure(x, y, width, height, border_width, sibling,
                               stack_mode)
 
-        cw = ch = None
-        if width:
-            cw = width + self.pos['client']['width']
-        if height:
-            ch = height + self.pos['client']['height']
+        # pass on the modified values...
+        return x, y, width, height, border_width, sibling, stack_mode
 
-        if cw or ch:
-            self.client.win.configure(width=cw,
-                                      height=ch)
+    def validate_size(self, width, height):
+        if width is not None:
+            width += self.pos['client']['width']
+        if height is not None:
+            height += self.pos['client']['height']
+
+        width, height = self.client.win.validate_size(width, height)
+
+        if width is not None:
+            width -= self.pos['client']['width']
+        if height is not None:
+            height -= self.pos['client']['height']
+
+        return width, height
 
     def resize_start(self, wid, root_x, root_y, event_x, event_y,
                      direction=None):
@@ -194,12 +278,16 @@ class _Frame(object):
         self._resizing = {
             'root_x': root_x,
             'root_y': root_y,
+            'x': self.parent.geom['x'],
+            'y': self.parent.geom['y'],
+            'w': self.parent.geom['width'],
+            'h': self.parent.geom['height'],
             'direction': direction
         }
 
         return cursor
 
-    def resize_drag(self, root_x, root_y):
+    def resize_drag(self, root_x, root_y, event_x, event_y):
         # shortcut
         d = self._resizing['direction']
         mr = ewmh.MoveResize
@@ -212,35 +300,45 @@ class _Frame(object):
         hs = (mr.SizeTopLeft, mr.SizeTop, mr.SizeTopRight,
               mr.SizeBottomRight, mr.SizeBottom, mr.SizeBottomLeft)
 
+        diffx = root_x - self._resizing['root_x']
+        diffy = root_y - self._resizing['root_y']
+
+        old_x = self.parent.geom['x']
+        old_y = self.parent.geom['y']
+
+        new_x = new_y = new_width = new_height = None
+
         if d in xs:
-            self.parent.geom['x'] += root_x - self._resizing['root_x']
+            new_x = self._resizing['x'] + diffx
 
         if d in ys:
-            self.parent.geom['y'] += root_y - self._resizing['root_y']
+            new_y = self._resizing['y'] + diffy
 
         if d in ws:
             if d in xs:
-                self.parent.geom['width'] -= root_x - self._resizing['root_x']
+                new_width = self._resizing['w'] - diffx
             else:
-                self.parent.geom['width'] += root_x - self._resizing['root_x']
+                new_width = self._resizing['w'] + diffx
 
         if d in hs:
             if d in ys:
-                self.parent.geom['height'] -= (root_y -
-                                               self._resizing['root_y'])
+                new_height = self._resizing['h'] - diffy
             else:
-                self.parent.geom['height'] += (root_y -
-                                               self._resizing['root_y'])
+                new_height = self._resizing['h'] + diffy
 
-        self._resizing['root_x'] = root_x
-        self._resizing['root_y'] = root_y
+        w, h = self.validate_size(new_width, new_height)
 
-        self.configure(x=self.parent.geom['x'], y=self.parent.geom['y'],
-                              width=self.parent.geom['width'],
-                              height=self.parent.geom['height'])
+        # If the width and height didn't change, don't adjust x,y...
+        if new_x is not None and w != new_width:
+            new_x = self._resizing['x'] + (self._resizing['w'] - w)
+        if new_y is not None and h != new_height:
+            new_y = self._resizing['y'] + (self._resizing['h'] - h)
+
+        self.configure(x=new_x, y=new_y, width=w, height=h)
 
     def resize_end(self, root_x, root_y):
         self._resizing = None
+        self.configure()
 
     def move_start(self, wid, root_x, root_y):
         self._moving = {
@@ -263,12 +361,7 @@ class _Frame(object):
         self._moving = None
 
     def render(self):
-        try:
-            state.conn.core.GetGeometry(self.client.win.id).reply()
-        except:
-            return False
-
-        return True
+        return self.client.is_alive()
 
     def set_state(self, st):
         assert st in self.allowed_states

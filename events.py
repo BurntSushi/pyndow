@@ -256,9 +256,15 @@ def register_latent_callback(callback):
 
     __latent.add(callback)
 
+def empty_latent():
+    global __latent
+
+    __latent = set()
+
 def run_latent():
     for latent in __latent:
         latent()
+    empty_latent()
 
 def dispatch(xevent):
     global time
@@ -270,7 +276,12 @@ def dispatch(xevent):
     if hasattr(xevent, 'time'):
         time = xevent.time
 
+    # WHY!?
+    if xevent.response_type == 161:
+        xevent = xcb.xproto.ClientMessageEvent(xevent)
+
     #state.debug_obj(xevent, True)
+
     #if hasattr(xevent, 'window'):
         #try:
             #state.debug(ewmh.get_wm_name(state.conn, xevent.window).reply())
@@ -296,6 +307,13 @@ def __dispatch_fetch_callbacks(xevent, wid, modifiers, keycode, button):
 
     # Return a copy in case we unregister in a callback
     return __events[xevent][wid].setdefault(modkey, [])[:]
+
+def dispatch_ClientMessageEvent(e):
+    cbs = __dispatch_fetch_callbacks(xcb.xproto.ClientMessageEvent, e.window,
+                                     None, None, None)
+
+    for cb in cbs:
+        cb(e=e)
 
 def dispatch_ButtonPressEvent(e):
     if state.grab_pointer:
@@ -426,6 +444,13 @@ def dispatch_FocusOutEvent(e):
 
 def dispatch_ExposeEvent(e):
     cbs = __dispatch_fetch_callbacks(xcb.xproto.ExposeEvent, e.window,
+                                     None, None, None)
+
+    for cb in cbs:
+        cb(e=e)
+
+def dispatch_PropertyNotifyEvent(e):
+    cbs = __dispatch_fetch_callbacks(xcb.xproto.PropertyNotifyEvent, e.window,
                                      None, None, None)
 
     for cb in cbs:

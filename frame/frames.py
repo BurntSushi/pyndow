@@ -42,6 +42,11 @@ class Title(_FrameWindow):
         self.configure(x=self.pos['x'], y=self.pos['y'],
                        height=self.pos['height'])
 
+        events.register_drag(self.frame.client.cb_move_start,
+                             self.frame.client.cb_move_drag,
+                             self.frame.client.cb_move_end,
+                             self.id, '1')
+
         self.set_text(self.frame.client.win.wmname)
 
         self.map()
@@ -63,6 +68,41 @@ class Title(_FrameWindow):
         rendering.paint_pix(self.id, self._imgs[self.frame.state],
                             self._fwidth, self._fheight)
 
+class TitleBar(_FrameWindow):
+    def __new__(cls, frame):
+        self = _FrameWindow.__new__(cls, frame)
+        self.id = window.create(self.frame.parent.id,
+                          xcb.xproto.CW.BackPixel,
+                          [self.frame.colors[self.frame.state]['bg']])
+
+        return self
+
+    def __init__(self, _):
+        _FrameWindow.__init__(self)
+
+        self.pos = {'x': self.frame.pos['title_bar']['x'],
+                    'y': self.frame.pos['title_bar']['y'],
+                    'width': self.frame.pos['title_bar']['width'],
+                    'height': self.frame.pos['title_bar']['height']}
+
+        self.configure(x=self.pos['x'], y=self.pos['y'],
+                       height=self.pos['height'])
+
+        events.register_drag(self.frame.client.cb_move_start,
+                             self.frame.client.cb_move_drag,
+                             self.frame.client.cb_move_end,
+                             self.id, '1')
+
+        self.map()
+
+    def render(self):
+        state.conn.core.ChangeWindowAttributes(
+            self.id,
+            xcb.xproto.CW.BackPixel,
+            [self.frame.colors[self.frame.state]['bg']]
+        )
+        self.clear()
+
 class ThinBorder(_FrameWindow):
     def __new__(cls, frame):
         self = _FrameWindow.__new__(cls, frame)
@@ -82,6 +122,11 @@ class ThinBorder(_FrameWindow):
 
         self.configure(x=self.pos['x'], y=self.pos['y'],
                        height=self.pos['height'])
+
+        events.register_drag(self.frame.client.cb_move_start,
+                             self.frame.client.cb_move_drag,
+                             self.frame.client.cb_move_end,
+                             self.id, '1')
 
         self.map()
 
@@ -115,11 +160,16 @@ class Icon(_FrameWindow):
         self.configure(x=self.pos['x'], y=self.pos['y'],
                        width=self.pos['width'], height=self.pos['height'])
 
-        self.__setup()
+        events.register_drag(self.frame.client.cb_move_start,
+                             self.frame.client.cb_move_drag,
+                             self.frame.client.cb_move_end,
+                             self.id, '1')
+
+        self.setup()
 
         self.map()
 
-    def __setup(self):
+    def setup(self):
         icons = ewmh.get_wm_icon(state.conn, self.frame.client.win.id).reply()
 
         # Find a valid icon...
@@ -146,15 +196,22 @@ class Icon(_FrameWindow):
                         icon = icn
 
             if icon is not None:
-                icon['alpha'] = True
                 icon['data'] = image.parse_net_wm_icon(icon['data'])
+                icon['mask'] = icon['data']
 
         # The ICCCM way...
-        if icon is None:
+        if (icon is None and
+            self.frame.client.win.hints['flags']['IconPixmap'] and
+            self.frame.client.win.hints['icon_pixmap'] is not None and
+            self.frame.client.win.hints['icon_mask'] is not None):
             pixid = self.frame.client.win.hints['icon_pixmap']
+            maskid = self.frame.client.win.hints['icon_mask']
 
             w, h, d = image.get_image_from_pixmap(state.conn, pixid)
-            icon = {'alpha': False, 'width': w, 'height': h, 'data': d}
+            icon = {'width': w, 'height': h, 'data': d}
+
+            _, _, icon['mask'] = image.get_image_from_pixmap(state.conn,
+                                                             maskid)
 
         # Default icon...
         if icon is None:
@@ -172,13 +229,18 @@ class Icon(_FrameWindow):
         # Blending time... yuck
         im = image.get_image(icon['width'], icon['height'], icon['data'])
         im = im.resize((self.pos['width'], self.pos['height']))
-        data = image.get_data(im)
+
+        if 'mask' in icon and icon['mask'] and icon['mask'] != icon['data']:
+            immask = image.get_bitmap(icon['width'], icon['height'],
+                                      icon['mask'])
+            immask = immask.resize((self.pos['width'], self.pos['height']))
+        else:
+            immask = im.copy()
 
         for st in self._imgs:
-            self._imgs[st] = image.blend_bgcolor(data,
+            self._imgs[st] = image.blend(im, immask,
                                  self.frame.colors[st]['bg'],
-                                 self.pos['width'], self.pos['height'],
-                                 icon['alpha'])
+                                 self.pos['width'], self.pos['height'])
 
     def render(self):
         rendering.paint_pix(self.id, self._imgs[self.frame.state],
@@ -213,6 +275,12 @@ class Full(_Frame):
             'icon': {'x': self.__bw + 3, 'y': self.__bw + 3,
                      'width': 20, 'height': 20},
             'buttons': {'x': -75, 'y': 2, 'width': 75, 'height': 20},
+        }
+        self.pos['title_bar'] = {
+            'x': 0,
+            'y': 0,
+            'width': 0,
+            'height': self.__titleheight
         }
         self.pos['title'] = {
             'x': self.pos['icon']['x'] + self.pos['icon']['width'] + 2,
@@ -321,8 +389,16 @@ class Full(_Frame):
             }
         }
 
+        # Set the sizes of each side
+        self.top = self.pos['client']['y']
+        self.left = self.pos['client']['x']
+        self.right = self.pos['right_side']['width']
+        self.bottom = (self.pos['bottom_side']['height'] +
+                       self.pos['bottom_border']['height'])
+
         _Frame.__init__(self, client, parent)
 
+        self.title_bar = TitleBar(self)
         self.top_side = TopSide(self)
         self.top_left = TopLeft(self)
         self.top_right = TopRight(self)
@@ -340,18 +416,24 @@ class Full(_Frame):
         self.bottom_border = ThinBorder(self)
         self.icon = Icon(self)
 
+        self.configure_client(width=self.client.win.geom['width'],
+                              height=self.client.win.geom['height'])
+
         # CHANGE THIS
         # This is bad because we're changing the width/height of the client
         # on map without good reason. This needs to be a function of the
         # current layout.
-        self.configure(
-            width=client.win.geom['width'] - self.pos['client']['width'],
-            height=client.win.geom['height'] - self.pos['client']['height'])
+        #x, y = self.gravitize(client.win.geom['x'], client.win.geom['y'])
+        #self.configure(
+            #x=x, y=y,
+            #width=client.win.geom['width'] - self.pos['client']['width'],
+            #height=client.win.geom['height'] - self.pos['client']['height'])
 
     def configure(self, x=None, y=None, width=None, height=None,
                   border_width=None, sibling=None, stack_mode=None):
-        _Frame.configure(self, x, y, width, height, border_width, sibling,
-                         stack_mode)
+        (x, y, width, height,
+         border_width, sibling, stack_mode) = _Frame.configure(
+            self, x, y, width, height, border_width, sibling, stack_mode)
 
         if width:
             self.top_side.configure(
@@ -369,6 +451,8 @@ class Full(_Frame):
                 x=self.pos['right_top']['x'] + self.right_side.geom['x'])
             self.right_bottom.configure(
                 x=self.right_side.geom['x'])
+            self.title_bar.configure(
+                width=width + self.pos['title_bar']['width'])
             self.title_border.configure(
                 width=width + self.pos['title_border']['width'])
             self.bottom_border.configure(
@@ -399,6 +483,7 @@ class Full(_Frame):
         if not _Frame.render(self):
             return
 
+        self.title_bar.render()
         self.bottom_border.render()
         self.title_border.render()
         self.top_side.render()
@@ -440,6 +525,7 @@ class Full(_Frame):
         self.top_left.destroy()
         self.top_side.destroy()
         self.title.destroy()
+        self.title_bar.destroy()
         self.icon.destroy()
 
 class Border(_Frame):
@@ -547,6 +633,12 @@ class Border(_Frame):
             }
         }
 
+        # Set the sizes of each side
+        self.top = self.pos['client']['y']
+        self.left = self.pos['client']['x']
+        self.right = self.pos['right_side']['width']
+        self.bottom = self.pos['bottom_side']['height']
+
         _Frame.__init__(self, client, parent)
 
         # Add CatchAll to allowed states
@@ -565,14 +657,14 @@ class Border(_Frame):
         self.right_top = RightTop(self)
         self.right_bottom = RightBottom(self)
 
-        self.configure(
-            width=client.win.geom['width'] - self.pos['client']['width'],
-            height=client.win.geom['height'] - self.pos['client']['height'])
+        self.configure_client(width=self.client.win.geom['width'],
+                              height=self.client.win.geom['height'])
 
     def configure(self, x=None, y=None, width=None, height=None,
                   border_width=None, sibling=None, stack_mode=None):
-        _Frame.configure(self, x, y, width, height, border_width, sibling,
-                         stack_mode)
+        (x, y, width, height,
+         border_width, sibling, stack_mode) = _Frame.configure(
+            self, x, y, width, height, border_width, sibling, stack_mode)
 
         if width:
             self.top_side.configure(
@@ -671,11 +763,13 @@ class SlimBorder(_Frame):
             }
         }
 
+        # Set the sizes of each side
+        self.top = self.left = self.right = self.bottom = self.__bw
+
         _Frame.__init__(self, client, parent)
 
-        self.configure(
-            width=client.win.geom['width'] - self.pos['client']['width'],
-            height=client.win.geom['height'] - self.pos['client']['height'])
+        self.configure_client(width=self.client.win.geom['width'],
+                              height=self.client.win.geom['height'])
 
     def render(self):
         if not _Frame.render(self):
@@ -706,11 +800,13 @@ class Nada(_Frame):
             }
         }
 
+        # Set the sizes of each side
+        self.top = self.left = self.right = self.bottom = 0
+
         _Frame.__init__(self, client, parent)
 
-        self.configure(
-            width=client.win.geom['width'] - self.pos['client']['width'],
-            height=client.win.geom['height'] - self.pos['client']['height'])
+        self.configure_client(width=self.client.win.geom['width'],
+                              height=self.client.win.geom['height'])
 
     # No state changing necessary...
     def set_state(self, st):

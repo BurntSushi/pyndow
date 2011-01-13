@@ -1,22 +1,29 @@
+from functools import partial
 import sys
 import time
+import traceback
 
 import xcb, xcb.xproto
 
 import util
 import icccm
 import ewmh
+import event
 
 import state
+import root
 import config
 import window
 import events
 import drag
 import command
 import client
+import misc
 
-icccm.build_atom_cache(state.conn)
-ewmh.build_atom_cache(state.conn)
+aid = partial(util.get_atom, state.conn)
+
+util.build_atom_cache(state.conn, icccm)
+util.build_atom_cache(state.conn, ewmh)
 
 command.init()
 
@@ -28,6 +35,8 @@ state.conn.core.ChangeWindowAttributesChecked(
      xcb.xproto.EventMask.PropertyChange, state.cursors['LeftPtr']]
 ).check()
 
+events.register_callback(xcb.xproto.ClientMessageEvent,
+                         root.cb_ClientMessage, state.root)
 events.register_callback(xcb.xproto.MapRequestEvent,
                          client.cb_MapRequestEvent, state.root)
 events.register_callback(xcb.xproto.ConfigureRequestEvent,
@@ -40,10 +49,9 @@ events.register_callback(xcb.xproto.ButtonReleaseEvent, drag.end, state.pyndow,
 state.root_focus()
 
 while True:
-    event = state.conn.wait_for_event()
-    events.dispatch(event)
-    while events.dispatch(state.conn.poll_for_event()):
-        pass
+    event.read(state.conn, block=True)
+    for e in event.queue():
+        events.dispatch(e)
 
     events.run_latent()
 
@@ -51,3 +59,5 @@ while True:
 
     if state.die:
         break
+
+misc.spawn('killall Xephyr')

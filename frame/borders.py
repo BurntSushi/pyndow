@@ -46,7 +46,7 @@ class _FrameBorder(_FrameWindow):
         events.register_drag(self.frame.client.cb_move_start,
                              self.frame.client.cb_move_drag,
                              self.frame.client.cb_move_end,
-                             self.id, 'Mod1-1', grab=False)
+                             self.id, 'Mod4-1', grab=False)
         events.register_drag(partial(self.frame.client.cb_resize_start,
                                      direction=self.direction),
                              self.frame.client.cb_resize_drag,
@@ -64,7 +64,7 @@ class _FrameBorder(_FrameWindow):
         events.register_drag(rs_start,
                              self.frame.client.cb_resize_drag,
                              self.frame.client.cb_resize_end,
-                             self.id, 'Mod1-3', grab=False)
+                             self.id, 'Mod4-3', grab=False)
 
         self.setup()
         self.map()
