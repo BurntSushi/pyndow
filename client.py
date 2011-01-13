@@ -141,11 +141,19 @@ class Client(object):
         self.focused()
 
     def focused(self):
+        if focus.focused() != self:
+            focus.focused().unfocused()
+
         focus.above(self)
         self.frame.set_state(frame.State.Active)
 
-        for client in focus.get_stack()[:-1]:
-            client.unfocused()
+        # I'm not sure if I want this. On one hand, this really isn't that
+        # expensive, since frame state changes only occur if they need to.
+        # Plus, this pretty much ensures that only one window *appears* to
+        # have focus at any time... Which is good. But it feels more like a
+        # band-aide.
+        #for client in focus.get_stack()[:-1]:
+            #client.unfocused()
 
     def unfocused(self):
         if (self.catchall and
@@ -172,16 +180,25 @@ class Client(object):
             return
 
         icccm.set_wm_state(state.conn, self.win.id, icccm.State.Normal, 0)
-        focus.add(self)
         layers.default.add(self)
         self.layer.stack()
 
+        # START GRAB
         state.grab()
         self.win.map()
         self.frame.map()
-        state.ungrab()
 
+        # Since mapped windows always get focus, make sure
+        # we unfocus the currently focused window... I guess we don't
+        # always get a FocusOutNotify??? *shrugs*
+        c = focus.focused()
+        if c:
+            c.unfocused()
+
+        focus.add(self)
         self.focus()
+        state.ungrab()
+        # END GRAB
 
         self._unmapped = False
 

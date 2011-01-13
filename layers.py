@@ -120,7 +120,8 @@ class Layer(object):
 desktop = Layer()
 below = Layer()
 default = Layer()
-dock = above = Layer()
+dock = Layer()
+above = Layer()
 fullscreen = Layer()
 
 Layer.set_default(default)
