@@ -1,0 +1,72 @@
+#!/usr/bin/python2
+
+# This command script is designed to issue pre-defined commands to Pyndow.
+# It can be used regularly on the command line, but it's also used internally
+# by Pyndow--in particular to provide some semblance of timeouts or intervals.
+# (Since the regular way to do this in Python, via the threading module,
+#  doesn't quite work well with X event processing.)
+#
+# Anyway... At the moment, the framework doesn't support more than one timeout
+# for any given window. If this needs to change, we can do it... Probably by
+# using process identifiers (for this script). Meh...
+
+from functools import partial
+import sys, time
+
+import xcb, xcb.xproto
+
+import util
+import event
+
+try:
+    cmd = str(sys.argv[1])
+    win = int(sys.argv[2])
+    slp = float(sys.argv[3])
+    cnt = int(sys.argv[4])
+except:
+    sys.exit(1)
+
+c = xcb.connect()
+root = c.get_setup().roots[0].root
+
+aid = partial(util.get_atom, c)
+
+# Are we starting a timeout? If so, flag the property on the window.
+# Before executing a command, check this property... If it's been unflagged
+# then exit!
+c.core.ChangeProperty(xcb.xproto.PropMode.Replace, win,
+                      aid('_PYNDOW_CMD_TIMEOUT'), xcb.xproto.Atom.CARDINAL,
+                      32, 1, [1])
+
+mask = xcb.xproto.EventMask.SubstructureNotify
+mask |= xcb.xproto.EventMask.SubstructureRedirect
+
+while True and (cnt is None or cnt > 0):
+    time.sleep(slp)
+
+    # If the window doesn't exist, die!
+    try:
+        c.core.GetGeometry(win).reply()
+    except:
+        break
+
+    cookie = util.get_property(c, win, aid('_PYNDOW_CMD_TIMEOUT'))
+    check = int(util.PropertyCookieSingle(cookie).reply())
+
+    if not check:
+        break
+
+    data = [util.get_atom(c, '_PYNDOW_CMD_%s' % cmd.upper())]
+    e = event.pack_client_message(win, util.get_atom(c, '_PYNDOW_CMD'), *data)
+    event.send_event(c, root, mask, e)
+
+    c.flush()
+
+    if isinstance(cnt, int):
+        cnt = max(cnt - 1, 0)
+
+c.core.ChangeProperty(xcb.xproto.PropMode.Replace, win,
+                      aid('_PYNDOW_CMD_TIMEOUT'), xcb.xproto.Atom.CARDINAL,
+                      32, 1, [0])
+
+c.flush()

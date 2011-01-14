@@ -5,7 +5,16 @@ from time import sleep
 def spawn(exc):
     if isinstance(exc, basestring):
         exc = exc.split()
-    subprocess.Popen(exc).pid
+    return subprocess.Popen(exc).pid
+
+def command(cmd, window, timeout=None, count=None):
+    s = './pyndow-cmd %s %d' % (cmd, window)
+    if timeout:
+        timeout /= 1000.0
+        s += ' %0.3f' % timeout
+    if count:
+        s += ' %d' % count
+    spawn(s)
 
 # Not sure if I can use this... it yields strange results.
 # X doesn't seem to cooperate...

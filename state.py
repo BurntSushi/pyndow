@@ -42,6 +42,11 @@ cursors = {
     'TopLeftCorner': cursor.create_font_cursor(conn, FC.TopLeftCorner)
 }
 
+def reconnect():
+    global conn
+
+    conn = xcb.connect()
+
 def get_kbmap():
     global __kbmap
 

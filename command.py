@@ -1,4 +1,5 @@
 import signal
+import threading
 import time
 from functools import partial
 
@@ -22,7 +23,7 @@ def init():
         cmd = kbs[k]
         callback = None
 
-        if cmd in globals():
+        if cmd not in ('init', 'spawn') and cmd in globals():
             callback = globals()[cmd]
 
         if cmd.startswith('`') and cmd.endswith('`'):
@@ -39,6 +40,12 @@ def spawn(exc, e):
 def toggle_catchall(e):
     focus.focused().toggle_catchall()
 
+def toggle_decorations(e):
+    client = focus.focused()
+
+    if client:
+        client.toggle_decorations()
+
 def test1(e):
     focus.focused().decorate()
 
@@ -53,10 +60,15 @@ def test4(e):
 
 def test5(e):
     client = focus.focused()
-    print client.win.wmname
+
+    if client:
+        client.attention_start()
 
 def test6(e):
-    pass
+    client = focus.focused()
+
+    if client:
+        client.attention_stop()
 
 def test7(e):
     pass

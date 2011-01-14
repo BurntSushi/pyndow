@@ -32,13 +32,18 @@ state.conn.core.ChangeWindowAttributesChecked(
     xcb.xproto.CW.EventMask | xcb.xproto.CW.Cursor,
     [xcb.xproto.EventMask.SubstructureNotify |
      xcb.xproto.EventMask.SubstructureRedirect |
-     xcb.xproto.EventMask.PropertyChange, state.cursors['LeftPtr']]
+     xcb.xproto.EventMask.PropertyChange |
+     xcb.xproto.EventMask.FocusChange, state.cursors['LeftPtr']]
 ).check()
 
 events.register_callback(xcb.xproto.ClientMessageEvent,
                          root.cb_ClientMessage, state.root)
 events.register_callback(xcb.xproto.MapRequestEvent,
                          client.cb_MapRequestEvent, state.root)
+events.register_callback(xcb.xproto.FocusInEvent,
+                         client.cb_FocusInEvent, state.root)
+events.register_callback(xcb.xproto.FocusOutEvent,
+                         client.cb_FocusOutEvent, state.root)
 events.register_callback(xcb.xproto.ConfigureRequestEvent,
                          window.cb_ConfigureRequestEvent, state.root)
 events.register_callback(xcb.xproto.MotionNotifyEvent, drag.drag, state.pyndow,

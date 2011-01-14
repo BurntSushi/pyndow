@@ -15,6 +15,7 @@ import events
 import focus
 import layers
 import frame
+import misc
 
 # An alias for easy atom grabbing
 # Get atom makes use of an atom cache
@@ -23,6 +24,12 @@ aid = partial(util.get_atom, state.conn)
 
 def cb_MapRequestEvent(e):
     manage(e.window)
+
+def cb_FocusInEvent(e):
+    pass
+
+def cb_FocusOutEvent(e):
+    pass
 
 class Client(object):
     def __init__(self, wid):
@@ -40,6 +47,7 @@ class Client(object):
              xcb.xproto.EventMask.FocusChange |
              xcb.xproto.EventMask.PropertyChange]
         )
+        state.conn.flush()
 
         x, y = self.win.geom['x'], self.win.geom['y']
         self.frame = self.determine_frame()(self)
@@ -110,6 +118,7 @@ class Client(object):
     def unmanage(self):
         # No more..!
         self.unlisten()
+        self.stop_timeout()
         icccm.set_wm_state(state.conn, self.win.id, icccm.State.Withdrawn, 0)
         self.frame.destroy()
         events.unregister_window(self.win.id)
@@ -136,24 +145,14 @@ class Client(object):
         if self.can_focus():
             state.conn.core.SetInputFocusChecked(
                 xcb.xproto.InputFocus.PointerRoot,
-                self.win.id, events.time).check()
+                self.win.id, xcb.xproto.Time.CurrentTime).check()
 
         self.focused()
 
     def focused(self):
-        if focus.focused() != self:
-            focus.focused().unfocused()
-
+        self.attention_stop()
         focus.above(self)
         self.frame.set_state(frame.State.Active)
-
-        # I'm not sure if I want this. On one hand, this really isn't that
-        # expensive, since frame state changes only occur if they need to.
-        # Plus, this pretty much ensures that only one window *appears* to
-        # have focus at any time... Which is good. But it feels more like a
-        # band-aide.
-        #for client in focus.get_stack()[:-1]:
-            #client.unfocused()
 
     def unfocused(self):
         if (self.catchall and
@@ -163,6 +162,23 @@ class Client(object):
         self.frame.set_state(
             frame.State.CatchAll if self.catchall else
             frame.State.Inactive)
+
+    def attention_start(self):
+        if self.in_timeout():
+            return
+
+        misc.command('toggle_state', self.win.id, 500, 100)
+
+    def attention_stop(self):
+        if not self.in_timeout():
+            return
+
+        self.stop_timeout()
+
+        if self is focus.focused():
+            self.focused()
+        else:
+            self.unfocused()
 
     def decorate(self, border=False, slim=False):
         if border:
@@ -187,13 +203,6 @@ class Client(object):
         state.grab()
         self.win.map()
         self.frame.map()
-
-        # Since mapped windows always get focus, make sure
-        # we unfocus the currently focused window... I guess we don't
-        # always get a FocusOutNotify??? *shrugs*
-        c = focus.focused()
-        if c:
-            c.unfocused()
 
         focus.add(self)
         self.focus()
@@ -224,6 +233,12 @@ class Client(object):
 
         state.conn.flush()
 
+    def stop_timeout(self):
+        state.conn.core.ChangeProperty(xcb.xproto.PropMode.Replace,
+                                       self.win.id, aid('_PYNDOW_CMD_TIMEOUT'),
+                                       xcb.xproto.Atom.CARDINAL, 32, 1, [0])
+        state.conn.flush()
+
     # Toggling
 
     def toggle_decorations(self):
@@ -233,6 +248,18 @@ class Client(object):
             self.undecorate()
         else:
             self.decorate()
+
+    def toggle_state(self):
+        if self.frame.state == frame.State.Active:
+            if (self.catchall and
+                frame.State.CatchAll not in self.frame.allowed_states):
+                self.catchall = False
+
+            self.frame.set_state(
+                frame.State.CatchAll if self.catchall else
+                frame.State.Inactive)
+        else:
+            self.frame.set_state(frame.State.Active)
 
     def toggle_catchall(self):
         if frame.State.CatchAll not in self.frame.allowed_states:
@@ -285,6 +312,17 @@ class Client(object):
 
         return True
 
+    def in_timeout(self):
+        cookie = util.get_property(state.conn, self.win.id,
+                                   aid('_PYNDOW_CMD_TIMEOUT'))
+        check = util.PropertyCookieSingle(cookie).reply()
+
+        if check is None:
+            return False
+
+        check = int(check)
+
+        return check == 1
 
     # Updates
 
@@ -430,7 +468,20 @@ class Client(object):
             self.win.properties.remove(e.atom)
 
     def cb_ClientMessageEvent(self, e):
-        state.debug(aname(e.type))
+        if aname(e.type) == '_PYNDOW_CMD':
+            atom_name = aname(e.data.data32[0])
+            cmd = 'cmd_%s' % atom_name.replace('_PYNDOW_CMD_', '').lower()
+
+            if hasattr(self, cmd):
+                getattr(self, cmd)()
+
+    # Commands
+
+    def cmd_toggle_state(self):
+        self.toggle_state()
+
+    def cmd_close(self):
+        self.close()
 
     # Nice debug functions
     def __str__(self):

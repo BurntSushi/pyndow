@@ -106,8 +106,8 @@ class _Frame(object):
         self.parent = parent or Parent(self)
 
         # State variables
-        self._moving = None
-        self._resizing = None
+        self.moving = None
+        self.resizing = None
 
         if parent is None:
             state.conn.core.ReparentWindow(self.client.win.id, self.parent.id,
@@ -275,7 +275,7 @@ class _Frame(object):
             mr.SizeTopLeft: state.cursors['TopLeftCorner']
         }.setdefault(direction, state.cursors['LeftPtr'])
 
-        self._resizing = {
+        self.resizing = {
             'root_x': root_x,
             'root_y': root_y,
             'x': self.parent.geom['x'],
@@ -289,7 +289,7 @@ class _Frame(object):
 
     def resize_drag(self, root_x, root_y, event_x, event_y):
         # shortcut
-        d = self._resizing['direction']
+        d = self.resizing['direction']
         mr = ewmh.MoveResize
 
         xs = (mr.SizeLeft, mr.SizeTopLeft, mr.SizeBottomLeft)
@@ -300,8 +300,8 @@ class _Frame(object):
         hs = (mr.SizeTopLeft, mr.SizeTop, mr.SizeTopRight,
               mr.SizeBottomRight, mr.SizeBottom, mr.SizeBottomLeft)
 
-        diffx = root_x - self._resizing['root_x']
-        diffy = root_y - self._resizing['root_y']
+        diffx = root_x - self.resizing['root_x']
+        diffy = root_y - self.resizing['root_y']
 
         old_x = self.parent.geom['x']
         old_y = self.parent.geom['y']
@@ -309,39 +309,39 @@ class _Frame(object):
         new_x = new_y = new_width = new_height = None
 
         if d in xs:
-            new_x = self._resizing['x'] + diffx
+            new_x = self.resizing['x'] + diffx
 
         if d in ys:
-            new_y = self._resizing['y'] + diffy
+            new_y = self.resizing['y'] + diffy
 
         if d in ws:
             if d in xs:
-                new_width = self._resizing['w'] - diffx
+                new_width = self.resizing['w'] - diffx
             else:
-                new_width = self._resizing['w'] + diffx
+                new_width = self.resizing['w'] + diffx
 
         if d in hs:
             if d in ys:
-                new_height = self._resizing['h'] - diffy
+                new_height = self.resizing['h'] - diffy
             else:
-                new_height = self._resizing['h'] + diffy
+                new_height = self.resizing['h'] + diffy
 
         w, h = self.validate_size(new_width, new_height)
 
         # If the width and height didn't change, don't adjust x,y...
         if new_x is not None and w != new_width:
-            new_x = self._resizing['x'] + (self._resizing['w'] - w)
+            new_x = self.resizing['x'] + (self.resizing['w'] - w)
         if new_y is not None and h != new_height:
-            new_y = self._resizing['y'] + (self._resizing['h'] - h)
+            new_y = self.resizing['y'] + (self.resizing['h'] - h)
 
         self.configure(x=new_x, y=new_y, width=w, height=h)
 
     def resize_end(self, root_x, root_y):
-        self._resizing = None
+        self.resizing = None
         self.configure()
 
     def move_start(self, wid, root_x, root_y):
-        self._moving = {
+        self.moving = {
             'root_x': root_x,
             'root_y': root_y
         }
@@ -349,16 +349,16 @@ class _Frame(object):
         return state.cursors['Fleur']
 
     def move_drag(self, root_x, root_y):
-        self.parent.geom['x'] += root_x - self._moving['root_x']
-        self.parent.geom['y'] += root_y - self._moving['root_y']
+        self.parent.geom['x'] += root_x - self.moving['root_x']
+        self.parent.geom['y'] += root_y - self.moving['root_y']
 
-        self._moving['root_x'] = root_x
-        self._moving['root_y'] = root_y
+        self.moving['root_x'] = root_x
+        self.moving['root_y'] = root_y
 
         self.configure(x=self.parent.geom['x'], y=self.parent.geom['y'])
 
     def move_end(self, root_x, root_y):
-        self._moving = None
+        self.moving = None
 
     def render(self):
         return self.client.is_alive()
