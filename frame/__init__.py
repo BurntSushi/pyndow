@@ -88,7 +88,7 @@ class Parent(_FrameWindow):
             state.conn.core.ChangeWindowAttributes(
                 self.id,
                 xcb.xproto.CW.BackPixel,
-                [0]
+                [self.frame.colors[State.Active]['thinborder']]
             )
         self.clear()
 

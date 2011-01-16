@@ -7,11 +7,13 @@ import icccm
 import ewmh
 import motif
 import event
+import image
 
 import state
 import events
 import layers
 import focus
+import rendering
 
 def create(parent, mask, values):
     wid = state.conn.generate_id()
@@ -296,6 +298,68 @@ class Window(GeometryWindow):
             self._wmclass = self._wmclass.reply()
 
         return self._wmclass
+
+    # This returns the raw image data of an icon
+    def get_icon(self, width, height):
+        def icon_diff(icn_w, icn_h):
+            return abs(width - icn_w) + abs(height - icn_h)
+
+        def icon_size(icn_w, icn_h):
+            return icn_w * icn_h
+
+        icons = ewmh.get_wm_icon(state.conn, self.id).reply()
+
+        # Find a valid icon...
+        icon = None
+
+        # The EWMH way... find an icon closest to our desired size
+        # Bigger is better!
+        if icons:
+            size = icon_size(width, height)
+
+            for icn in icons:
+                if icon is None:
+                    icon = icn
+                else:
+                    old = icon_diff(icon['width'], icon['height'])
+                    new = icon_diff(icn['width'], icn['height'])
+
+                    old_size = icon_size(icon['width'], icon['height'])
+                    new_size = icon_size(icn['width'], icn['height'])
+
+                    if ((new < old and new_size > old_size) or
+                        (size > old_size and size < new_size)):
+                        icon = icn
+
+            if icon is not None:
+                icon['data'] = image.parse_net_wm_icon(icon['data'])
+                icon['mask'] = icon['data']
+
+        # The ICCCM way...
+        if (icon is None and
+            self.hints['flags']['IconPixmap'] and
+            self.hints['icon_pixmap'] is not None and
+            self.hints['icon_mask'] is not None):
+            pixid = self.hints['icon_pixmap']
+            maskid = self.hints['icon_mask']
+
+            w, h, d = image.get_image_from_pixmap(state.conn, pixid)
+            icon = {'width': w, 'height': h, 'data': d}
+
+            _, _, icon['mask'] = image.get_image_from_pixmap(state.conn,
+                                                             maskid)
+
+        # Default icon...
+        # Stealing from Openbox for now... I swear I'll make my own soon :P
+        if icon is None:
+            icon = {
+                'data': image.get_data(rendering.openbox),
+                'mask': image.get_data(rendering.openbox),
+                'width': rendering.openbox.size[0],
+                'height': rendering.openbox.size[1]
+            }
+
+        return icon
 
 def cb_ConfigureRequestEvent(e):
     values = []

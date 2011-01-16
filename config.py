@@ -98,6 +98,7 @@ config_path = os.path.join('/home/andrew/')
 config_filename = 'config.ini'
 
 # Aliases
+get = PyndowConfigParser.get
 gethex = PyndowConfigParser.gethex
 getint = PyndowConfigParser.getint
 
@@ -113,11 +114,16 @@ option_types = {
     'frm_full_bottom_brdr_a': {'exec': gethex, 'default': 0xffffff},
     'frm_full_bottom_brdr_i': {'exec': gethex, 'default': 0xffffff},
     'frm_full_bottom_brdr_sz': {'exec': getint, 'default': 5},
+    'frm_full_button_bg_a': {'exec': gethex, 'default': 0xffffff},
+    'frm_full_button_bg_i': {'exec': gethex, 'default': 0xffffff},
+    'frm_full_button_fg_a': {'exec': gethex, 'default': 0xffffff},
+    'frm_full_button_fg_i': {'exec': gethex, 'default': 0xffffff},
     'frm_border_bg_a': {'exec': gethex, 'default': 0xbb0000},
     'frm_border_bg_i': {'exec': gethex, 'default': 0x008800},
     'frm_border_bg_c': {'exec': gethex, 'default': 0x3366ff},
     'frm_border_thin_clr': {'exec': gethex, 'default': 0x000000},
     'frm_border_brdr_sz': {'exec': getint, 'default': 5},
+    'cycle': {'exec': get, 'default': 'Mod1-Tab'},
     'all_tilers': {
         'exec': PyndowConfigParser.getlist,
         'default': ['Vertical']

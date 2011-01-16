@@ -24,7 +24,6 @@ class _FrameBorder(_FrameWindow):
                   cursor]
         self.id = window.create(self.frame.parent.id, mask, values)
 
-        self.frame = frame
         self.frm_ident = frm_ident
         self.cursor = cursor
         self.direction = direction
@@ -95,10 +94,10 @@ class TopSide(_FrameBorder):
         self._img_h = self.pos['height']
 
         for st in self._imgs:
-            self._imgs[st] = image.border(
+            self._imgs[st] = image.get_data(rendering.border(
                 self.frame.colors[st]['thinborder'],
                 self.frame.colors[st]['bg'],
-                self._img_w, self._img_h, 'top')
+                self._img_w, self._img_h, 'top'))
 
 class TopLeft(_FrameBorder):
     def __new__(cls, frame):
@@ -117,10 +116,10 @@ class TopLeft(_FrameBorder):
         self._img_h = self.pos['height']
 
         for st in self._imgs:
-            self._imgs[st] = image.corner(
+            self._imgs[st] = image.get_data(rendering.corner(
                 self.frame.colors[st]['thinborder'],
                 self.frame.colors[st]['bg'],
-                self._img_w, self._img_h, 'top_left')
+                self._img_w, self._img_h, 'top_left'))
 
 class TopRight(_FrameBorder):
     def __new__(cls, frame):
@@ -139,10 +138,10 @@ class TopRight(_FrameBorder):
         self._img_h = self.pos['height']
 
         for st in self._imgs:
-            self._imgs[st] = image.corner(
+            self._imgs[st] = image.get_data(rendering.corner(
                 self.frame.colors[st]['thinborder'],
                 self.frame.colors[st]['bg'],
-                self._img_w, self._img_h, 'top_right')
+                self._img_w, self._img_h, 'top_right'))
 
 class BottomSide(_FrameBorder):
     def __new__(cls, frame):
@@ -160,10 +159,10 @@ class BottomSide(_FrameBorder):
         self._img_h = self.pos['height']
 
         for st in self._imgs:
-            self._imgs[st] = image.border(
+            self._imgs[st] = image.get_data(rendering.border(
                 self.frame.colors[st]['thinborder'],
                 self.frame.colors[st]['bottomborder'],
-                self._img_w, self._img_h, 'bottom')
+                self._img_w, self._img_h, 'bottom'))
 
 class BottomLeft(_FrameBorder):
     def __new__(cls, frame):
@@ -182,10 +181,10 @@ class BottomLeft(_FrameBorder):
         self._img_h = self.pos['height']
 
         for st in self._imgs:
-            self._imgs[st] = image.corner(
+            self._imgs[st] = image.get_data(rendering.corner(
                 self.frame.colors[st]['thinborder'],
                 self.frame.colors[st]['bottomborder'],
-                self._img_w, self._img_h, 'bottom_left')
+                self._img_w, self._img_h, 'bottom_left'))
 
 class BottomRight(_FrameBorder):
     def __new__(cls, frame):
@@ -203,10 +202,10 @@ class BottomRight(_FrameBorder):
         self._img_h = self.pos['height']
 
         for st in self._imgs:
-            self._imgs[st] = image.corner(
+            self._imgs[st] = image.get_data(rendering.corner(
                 self.frame.colors[st]['thinborder'],
                 self.frame.colors[st]['bottomborder'],
-                self._img_w, self._img_h, 'bottom_right')
+                self._img_w, self._img_h, 'bottom_right'))
 
 class LeftSide(_FrameBorder):
     def __new__(cls, frame):
@@ -225,10 +224,10 @@ class LeftSide(_FrameBorder):
         self._img_h = 1
 
         for st in self._imgs:
-            self._imgs[st] = image.border(
+            self._imgs[st] = image.get_data(rendering.border(
                 self.frame.colors[st]['thinborder'],
                 self.frame.colors[st]['bg'],
-                self._img_w, self._img_h, 'left')
+                self._img_w, self._img_h, 'left'))
 
 class LeftTop(_FrameBorder):
     def __new__(cls, frame):
@@ -247,10 +246,10 @@ class LeftTop(_FrameBorder):
         self._img_h = self.pos['height']
 
         for st in self._imgs:
-            self._imgs[st] = image.corner(
+            self._imgs[st] = image.get_data(rendering.corner(
                 self.frame.colors[st]['thinborder'],
                 self.frame.colors[st]['bg'],
-                self._img_w, self._img_h, 'left_top')
+                self._img_w, self._img_h, 'left_top'))
 
 class LeftBottom(_FrameBorder):
     def __new__(cls, frame):
@@ -269,10 +268,10 @@ class LeftBottom(_FrameBorder):
         self._img_h = self.pos['height']
 
         for st in self._imgs:
-            self._imgs[st] = image.corner(
+            self._imgs[st] = image.get_data(rendering.corner(
                 self.frame.colors[st]['thinborder'],
                 self.frame.colors[st]['bg'],
-                self._img_w, self._img_h, 'left_bottom')
+                self._img_w, self._img_h, 'left_bottom'))
 
 class RightSide(_FrameBorder):
     def __new__(cls, frame):
@@ -290,10 +289,10 @@ class RightSide(_FrameBorder):
         self._img_h = 1
 
         for st in self._imgs:
-            self._imgs[st] = image.border(
+            self._imgs[st] = image.get_data(rendering.border(
                 self.frame.colors[st]['thinborder'],
                 self.frame.colors[st]['bg'],
-                self._img_w, self._img_h, 'right')
+                self._img_w, self._img_h, 'right'))
 
 class RightTop(_FrameBorder):
     def __new__(cls, frame):
@@ -312,10 +311,10 @@ class RightTop(_FrameBorder):
         self._img_h = self.pos['height']
 
         for st in self._imgs:
-            self._imgs[st] = image.corner(
+            self._imgs[st] = image.get_data(rendering.corner(
                 self.frame.colors[st]['thinborder'],
                 self.frame.colors[st]['bg'],
-                self._img_w, self._img_h, 'right_top')
+                self._img_w, self._img_h, 'right_top'))
 
 class RightBottom(_FrameBorder):
     def __new__(cls, frame):
@@ -333,7 +332,7 @@ class RightBottom(_FrameBorder):
         self._img_h = self.pos['height']
 
         for st in self._imgs:
-            self._imgs[st] = image.corner(
+            self._imgs[st] = image.get_data(rendering.corner(
                 self.frame.colors[st]['thinborder'],
                 self.frame.colors[st]['bg'],
-                self._img_w, self._img_h, 'right_bottom')
+                self._img_w, self._img_h, 'right_bottom'))

@@ -37,6 +37,9 @@ def init():
 def spawn(exc, e):
     misc.spawn(exc)
 
+def focus_switcher(e):
+    print 'Focus switcher!'
+
 def toggle_catchall(e):
     focus.focused().toggle_catchall()
 

@@ -38,6 +38,7 @@ class Client(object):
         self._unmapped = True
         self.__net_wm_name = False
         self.catchall = False # Temp
+        self.maximized = False
         self.__unmap_ignore = 0
 
         state.conn.core.ChangeWindowAttributes(

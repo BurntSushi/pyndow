@@ -18,239 +18,8 @@ from borders import TopSide, BottomSide, LeftSide, RightSide
 from borders import TopLeft, TopRight, BottomLeft, BottomRight
 from borders import LeftTop, LeftBottom, RightTop, RightBottom
 
-class Title(_FrameWindow):
-    def __new__(cls, frame):
-        self = _FrameWindow.__new__(cls, frame)
-        self.id = window.create(self.frame.parent.id,
-                          xcb.xproto.CW.BackPixmap,
-                          [xcb.xproto.BackPixmap.ParentRelative])
-
-        return self
-
-    def __init__(self, _):
-        _FrameWindow.__init__(self)
-
-        self._imgs = dict([(st, None) for st in self.frame.allowed_states])
-        self._fwidth = 0
-        self._fheight = 0
-
-        self.pos = {'x': self.frame.pos['title']['x'],
-                    'y': self.frame.pos['title']['y'],
-                    'width': self.frame.pos['title']['width'],
-                    'height': self.frame.pos['title']['height']}
-
-        self.configure(x=self.pos['x'], y=self.pos['y'],
-                       height=self.pos['height'])
-
-        events.register_drag(self.frame.client.cb_move_start,
-                             self.frame.client.cb_move_drag,
-                             self.frame.client.cb_move_end,
-                             self.id, '1')
-
-        self.set_text(self.frame.client.win.wmname)
-
-        self.map()
-
-    def set_text(self, txt):
-        for st in self._imgs:
-            self._imgs[st], width, height = image.draw_text_bgcolor(
-                txt, '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf', 15,
-                self.frame.colors[st]['bg'],
-                self.frame.colors[st]['title'],
-                self.pos['width'], self.pos['height']
-            )
-
-        self._fwidth, self._fheight = width, height
-
-        self.configure(width=self._fwidth)
-
-    def render(self):
-        rendering.paint_pix(self.id, self._imgs[self.frame.state],
-                            self._fwidth, self._fheight)
-
-class TitleBar(_FrameWindow):
-    def __new__(cls, frame):
-        self = _FrameWindow.__new__(cls, frame)
-        self.id = window.create(self.frame.parent.id,
-                          xcb.xproto.CW.BackPixel,
-                          [self.frame.colors[self.frame.state]['bg']])
-
-        return self
-
-    def __init__(self, _):
-        _FrameWindow.__init__(self)
-
-        self.pos = {'x': self.frame.pos['title_bar']['x'],
-                    'y': self.frame.pos['title_bar']['y'],
-                    'width': self.frame.pos['title_bar']['width'],
-                    'height': self.frame.pos['title_bar']['height']}
-
-        self.configure(x=self.pos['x'], y=self.pos['y'],
-                       height=self.pos['height'])
-
-        events.register_drag(self.frame.client.cb_move_start,
-                             self.frame.client.cb_move_drag,
-                             self.frame.client.cb_move_end,
-                             self.id, '1')
-
-        self.map()
-
-    def render(self):
-        state.conn.core.ChangeWindowAttributes(
-            self.id,
-            xcb.xproto.CW.BackPixel,
-            [self.frame.colors[self.frame.state]['bg']]
-        )
-        self.clear()
-
-class ThinBorder(_FrameWindow):
-    def __new__(cls, frame):
-        self = _FrameWindow.__new__(cls, frame)
-        self.id = window.create(self.frame.parent.id,
-                          xcb.xproto.CW.BackPixel,
-                          [self.frame.colors[self.frame.state]['thinborder']])
-
-        return self
-
-    def __init__(self, _):
-        _FrameWindow.__init__(self)
-
-        self.pos = {'x': self.frame.pos['title_border']['x'],
-                    'y': self.frame.pos['title_border']['y'],
-                    'width': self.frame.pos['title_border']['width'],
-                    'height': self.frame.pos['title_border']['height']}
-
-        self.configure(x=self.pos['x'], y=self.pos['y'],
-                       height=self.pos['height'])
-
-        events.register_drag(self.frame.client.cb_move_start,
-                             self.frame.client.cb_move_drag,
-                             self.frame.client.cb_move_end,
-                             self.id, '1')
-
-        self.map()
-
-    def render(self):
-        state.conn.core.ChangeWindowAttributes(
-            self.id,
-            xcb.xproto.CW.BackPixel,
-            [self.frame.colors[self.frame.state]['thinborder']]
-        )
-        self.clear()
-
-class Icon(_FrameWindow):
-    def __new__(cls, frame):
-        self = _FrameWindow.__new__(cls, frame)
-        self.id = window.create(self.frame.parent.id,
-                          xcb.xproto.CW.BackPixmap,
-                          [xcb.xproto.BackPixmap.ParentRelative])
-
-        return self
-
-    def __init__(self, _):
-        _FrameWindow.__init__(self)
-
-        self._imgs = dict([(st, None) for st in self.frame.allowed_states])
-
-        self.pos = {'x': self.frame.pos['icon']['x'],
-                    'y': self.frame.pos['icon']['y'],
-                    'width': self.frame.pos['icon']['width'],
-                    'height': self.frame.pos['icon']['height']}
-
-        self.configure(x=self.pos['x'], y=self.pos['y'],
-                       width=self.pos['width'], height=self.pos['height'])
-
-        events.register_drag(self.frame.client.cb_move_start,
-                             self.frame.client.cb_move_drag,
-                             self.frame.client.cb_move_end,
-                             self.id, '1')
-
-        self.setup()
-
-        self.map()
-
-    def setup(self):
-        icons = ewmh.get_wm_icon(state.conn, self.frame.client.win.id).reply()
-
-        # Find a valid icon...
-        # This code doesn't belong in here. It should be in client.
-        icon = None
-
-        # The EWMH way... find an icon closest to our desired size
-        # Bigger is better!
-        if icons:
-            size = self.__icon_size(self.pos['width'], self.pos['height'])
-
-            for icn in icons:
-                if icon is None:
-                    icon = icn
-                else:
-                    old = self.__icon_diff(icon['width'], icon['height'])
-                    new = self.__icon_diff(icn['width'], icn['height'])
-
-                    old_size = self.__icon_size(icon['width'], icon['height'])
-                    new_size = self.__icon_size(icn['width'], icn['height'])
-
-                    if ((new < old and new_size > old_size) or
-                        (size > old_size and size < new_size)):
-                        icon = icn
-
-            if icon is not None:
-                icon['data'] = image.parse_net_wm_icon(icon['data'])
-                icon['mask'] = icon['data']
-
-        # The ICCCM way...
-        if (icon is None and
-            self.frame.client.win.hints['flags']['IconPixmap'] and
-            self.frame.client.win.hints['icon_pixmap'] is not None and
-            self.frame.client.win.hints['icon_mask'] is not None):
-            pixid = self.frame.client.win.hints['icon_pixmap']
-            maskid = self.frame.client.win.hints['icon_mask']
-
-            w, h, d = image.get_image_from_pixmap(state.conn, pixid)
-            icon = {'width': w, 'height': h, 'data': d}
-
-            _, _, icon['mask'] = image.get_image_from_pixmap(state.conn,
-                                                             maskid)
-
-        # Default icon...
-        if icon is None:
-            pass
-
-        # Last resort... a simple solid box
-        if icon is None or not icon['width'] or not icon['height']:
-            for st in self._imgs:
-                self._imgs[st] = image.box(self.frame.colors[st]['bg'],
-                                           self.pos['width'],
-                                           self.pos['height'])
-
-            return
-
-        # Blending time... yuck
-        im = image.get_image(icon['width'], icon['height'], icon['data'])
-        im = im.resize((self.pos['width'], self.pos['height']))
-
-        if 'mask' in icon and icon['mask'] and icon['mask'] != icon['data']:
-            immask = image.get_bitmap(icon['width'], icon['height'],
-                                      icon['mask'])
-            immask = immask.resize((self.pos['width'], self.pos['height']))
-        else:
-            immask = im.copy()
-
-        for st in self._imgs:
-            self._imgs[st] = image.blend(im, immask,
-                                 self.frame.colors[st]['bg'],
-                                 self.pos['width'], self.pos['height'])
-
-    def render(self):
-        rendering.paint_pix(self.id, self._imgs[self.frame.state],
-                            self.pos['width'], self.pos['height'])
-
-    def __icon_diff(self, icn_w, icn_h):
-        return abs(self.pos['width'] - icn_w) + abs(self.pos['height'] - icn_h)
-
-    def __icon_size(self, icn_w, icn_h):
-        return icn_w * icn_h
+from full import (ButtonBG, Close, Icon, Maximize, Minimize, Restore,
+                  ThinBorder, Title, TitleBar)
 
 class Full(_Frame):
     def __init__(self, client, parent=None):
@@ -275,6 +44,31 @@ class Full(_Frame):
             'icon': {'x': self.__bw + 3, 'y': self.__bw + 3,
                      'width': 20, 'height': 20},
             'buttons': {'x': -75, 'y': 2, 'width': 75, 'height': 20},
+        }
+        self.pos['close'] = {
+            'x': -22,
+            'y': self.__bw + 4,
+            'width': 17,
+            'height': 17
+        }
+        self.pos['maximize'] = {
+            'x': self.pos['close']['x'] * 2,
+            'y': self.pos['close']['y'],
+            'width': self.pos['close']['width'],
+            'height': self.pos['close']['height']
+        }
+        self.pos['restore'] = self.pos['maximize']
+        self.pos['minimize'] = {
+            'x': self.pos['close']['x'] * 3,
+            'y': self.pos['close']['y'],
+            'width': self.pos['close']['width'],
+            'height': self.pos['close']['height']
+        }
+        self.pos['buttonbg'] = {
+            'x': self.pos['minimize']['x'],
+            'y': 0,
+            'width': - self.pos['minimize']['x'],
+            'height': self.__titleheight
         }
         self.pos['title_bar'] = {
             'x': 0,
@@ -380,12 +174,16 @@ class Full(_Frame):
                 'title': config.get_option('frm_full_title_a'),
                 'thinborder': config.get_option('frm_thinborder_clr'),
                 'bottomborder': config.get_option('frm_full_bottom_brdr_a'),
+                'buttonbg': config.get_option('frm_full_button_bg_a'),
+                'buttonfg': config.get_option('frm_full_button_fg_a')
             },
             State.Inactive: { # inactive
                 'bg': config.get_option('frm_full_bg_i'),
                 'title': config.get_option('frm_full_title_i'),
                 'thinborder': config.get_option('frm_thinborder_clr'),
                 'bottomborder': config.get_option('frm_full_bottom_brdr_i'),
+                'buttonbg': config.get_option('frm_full_button_bg_i'),
+                'buttonfg': config.get_option('frm_full_button_fg_i')
             }
         }
 
@@ -398,7 +196,16 @@ class Full(_Frame):
 
         _Frame.__init__(self, client, parent)
 
+        # Put all the goodies underneath the borders and stuff
         self.title_bar = TitleBar(self)
+        self.title = Title(self)
+        self.buttonbg = ButtonBG(self) # Hides title if the window is too small
+        self.close = Close(self)
+        self.minimize = Minimize(self)
+        self.restore = Restore(self)
+        self.maximize = Maximize(self)
+        self.icon = Icon(self)
+
         self.top_side = TopSide(self)
         self.top_left = TopLeft(self)
         self.top_right = TopRight(self)
@@ -411,10 +218,10 @@ class Full(_Frame):
         self.right_side = RightSide(self)
         self.right_top = RightTop(self)
         self.right_bottom = RightBottom(self)
-        self.title = Title(self)
         self.title_border = ThinBorder(self)
         self.bottom_border = ThinBorder(self)
-        self.icon = Icon(self)
+
+        self.choose_maximized()
 
         self.configure_client(width=self.client.win.geom['width'],
                               height=self.client.win.geom['height'])
@@ -436,6 +243,16 @@ class Full(_Frame):
             self, x, y, width, height, border_width, sibling, stack_mode)
 
         if width:
+            self.close.configure(
+                x=width + self.pos['close']['x'])
+            self.maximize.configure(
+                x=width + self.pos['maximize']['x'])
+            self.restore.configure(
+                x=width + self.pos['restore']['x'])
+            self.minimize.configure(
+                x=width + self.pos['minimize']['x'])
+            self.buttonbg.configure(
+                x=width + self.pos['buttonbg']['x'])
             self.top_side.configure(
                 width=width + self.pos['top_side']['width'])
             self.top_right.configure(
@@ -499,9 +316,25 @@ class Full(_Frame):
         self.right_top.render()
         self.right_bottom.render()
         self.title.render()
+        self.minimize.render()
+        self.restore.render()
+        self.maximize.render()
+        self.close.render()
+        self.buttonbg.render()
         self.icon.render()
         self.parent.render()
+
+        self.choose_maximized()
+
         state.conn.flush()
+
+    def choose_maximized(self):
+        if self.client.maximized:
+            self.restore.map()
+            self.maximize.unmap()
+        else:
+            self.restore.unmap()
+            self.maximize.map()
 
     def set_state(self, st):
         if not _Frame.set_state(self, st):
@@ -526,6 +359,11 @@ class Full(_Frame):
         self.top_side.destroy()
         self.title.destroy()
         self.title_bar.destroy()
+        self.maximize.destroy()
+        self.restore.destroy()
+        self.minimize.destroy()
+        self.close.destroy()
+        self.buttonbg.destroy()
         self.icon.destroy()
 
 class Border(_Frame):
@@ -756,10 +594,12 @@ class SlimBorder(_Frame):
         # Some colors...
         self.colors = {
             State.Active: { # active
-                'bg': config.get_option('frm_thinborder_clr')
+                'bg': config.get_option('frm_thinborder_clr'),
+                'thinborder': config.get_option('frm_thinborder_clr')
             },
             State.Inactive: { # inactive
-                'bg': config.get_option('frm_thinborder_clr')
+                'bg': config.get_option('frm_thinborder_clr'),
+                'thinborder': config.get_option('frm_thinborder_clr')
             }
         }
 
@@ -793,10 +633,12 @@ class Nada(_Frame):
         # Some colors... doesn't matter, they aren't seen
         self.colors = {
             State.Active: { # active
-                'bg': -1
+                'bg': -1,
+                'thinborder': -1
             },
             State.Inactive: { # inactive
-                'bg': -1
+                'bg': -1,
+                'thinborder': -1
             }
         }
 

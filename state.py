@@ -55,6 +55,11 @@ def get_kbmap():
 
     return __kbmap
 
+def set_kbmap(kbmap):
+    global __kbmap
+
+    __kbmap = kbmap
+
 def replay_pointer():
     conn.core.AllowEventsChecked(xcb.xproto.Allow.ReplayPointer,
                                  xcb.xproto.Time.CurrentTime).check()

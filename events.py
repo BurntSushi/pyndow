@@ -7,7 +7,7 @@ import ewmh
 import keysym
 
 import state
-import drag
+import grab as grabber
 
 # The __events dictionary is keyed by the X event and then by window.
 # Additional criteria (like key binding, mouse binding) can
@@ -40,8 +40,9 @@ def __parse_keystring(key_string):
         if hasattr(xcb.xproto.KeyButMask, part):
             modifiers |= getattr(xcb.xproto.KeyButMask, part)
         else:
-            keycode = keysym.lookup_string(state.conn, state.get_kbmap(),
-                                           part.lower())
+            if len(part) == 1:
+                part = part.lower()
+            keycode = keysym.lookup_string(state.conn, state.get_kbmap(), part)
 
     return modifiers, keycode
 
@@ -137,7 +138,7 @@ def __register_button(xevent, callback, wid, button_string, propagate=False,
 
 def register_drag(start, during, end, wid, button_string,
                   propagate=False, grab=True):
-    register_buttonpress(partial(drag.start, start, during, end), wid,
+    register_buttonpress(partial(grabber.drag_start, start, during, end), wid,
                          button_string, propagate, grab)
 
 def register_buttonpress(callback, wid, button_string, propagate=False,
@@ -192,6 +193,32 @@ def unregister_buttonrelease(callback, wid, button_string):
     return __unregister_button(xcb.xproto.ButtonReleaseEvent, callback, wid,
                                button_string)
 
+def regrab(changes):
+    global __grabbed, __events
+
+    cmodkeys = []
+    for wid, modifiers, keycode, button in __grabbed:
+        if keycode in changes:
+            cmodkeys.append((wid, modifiers, keycode, button))
+
+            keysym.ungrab_key(state.conn, wid, modifiers, keycode)
+            keysym.grab_key(state.conn, wid, modifiers, changes[keycode])
+
+            old = (modifiers, keycode, button)
+            new = (modifiers, changes[keycode], button)
+            for xevent in __events:
+                for wid in __events[xevent]:
+                    if old in __events[xevent][wid]:
+                        __events[xevent][wid][new] = __events[xevent][wid][old]
+                        del __events[xevent][wid][old]
+
+    for wid, modifiers, keycode, button in cmodkeys:
+        old = (wid, modifiers, keycode, button)
+        new = (wid, modifiers, changes[keycode], button)
+
+        __grabbed[new] = __grabbed[old]
+        del __grabbed[old]
+
 def __register_key(xevent, callback, wid, key_string):
     global __grabbed
 
@@ -210,6 +237,16 @@ def __register_key(xevent, callback, wid, key_string):
     __grabbed[modkey] += 1
 
     return register_callback(xevent, callback, wid, modifiers, keycode, None)
+
+# It may seem like we don't need to use the "grab" module here since we're
+# setting up three event callbacks, but the "grab" module is still useful
+# to abstract the grab keyboard stuff.
+def register_keygrab(start, during, end, wid, key_string, stop_key_string):
+    register_keypress(partial(grabber.key_start, start, during, end), wid,
+                      key_string)
+    register_keypress(grabber.key_do, state.pyndow, key_string)
+    register_keyrelease(grabber.key_end, state.pyndow, stop_key_string)
+    register_keyrelease(grabber.key_end, state.pyndow, 'Mod1-Alt_R') # temp
 
 def register_keypress(callback, wid, key_string):
     return __register_key(xcb.xproto.KeyPressEvent, callback, wid, key_string)
@@ -280,7 +317,7 @@ def dispatch(xevent):
     if xevent.response_type == 161:
         xevent = xcb.xproto.ClientMessageEvent(xevent)
 
-    #state.debug_obj(xevent, True)
+    state.debug_obj(xevent, True)
 
     #if hasattr(xevent, 'window'):
         #try:
@@ -316,7 +353,7 @@ def dispatch_ClientMessageEvent(e):
         cb(e=e)
 
 def dispatch_ButtonPressEvent(e):
-    if state.grab_pointer:
+    if state.grab_pointer and grabber.dragging:
         mods = None
         button = None
     else:
@@ -334,7 +371,7 @@ def dispatch_ButtonPressEvent(e):
         cb(e=e)
 
 def dispatch_ButtonReleaseEvent(e):
-    if state.grab_pointer:
+    if state.grab_pointer and grabber.dragging:
         mods = None
         button = None
     else:
@@ -352,7 +389,7 @@ def dispatch_ButtonReleaseEvent(e):
         cb(e=e)
 
 def dispatch_MotionNotifyEvent(e):
-    if state.grab_pointer:
+    if state.grab_pointer and grabber.dragging:
         mods = None
         button = None
     else:
@@ -443,6 +480,7 @@ def dispatch_FocusOutEvent(e):
         cb(e=e)
 
 def dispatch_ExposeEvent(e):
+    state.debug_obj(e)
     cbs = __dispatch_fetch_callbacks(xcb.xproto.ExposeEvent, e.window,
                                      None, None, None)
 
@@ -451,6 +489,27 @@ def dispatch_ExposeEvent(e):
 
 def dispatch_PropertyNotifyEvent(e):
     cbs = __dispatch_fetch_callbacks(xcb.xproto.PropertyNotifyEvent, e.window,
+                                     None, None, None)
+
+    for cb in cbs:
+        cb(e=e)
+
+def dispatch_EnterNotifyEvent(e):
+    cbs = __dispatch_fetch_callbacks(xcb.xproto.EnterNotifyEvent, e.event,
+                                     None, None, None)
+
+    for cb in cbs:
+        cb(e=e)
+
+def dispatch_LeaveNotifyEvent(e):
+    cbs = __dispatch_fetch_callbacks(xcb.xproto.LeaveNotifyEvent, e.event,
+                                     None, None, None)
+
+    for cb in cbs:
+        cb(e=e)
+
+def dispatch_MappingNotifyEvent(e):
+    cbs = __dispatch_fetch_callbacks(xcb.xproto.MappingNotifyEvent, state.root,
                                      None, None, None)
 
     for cb in cbs:

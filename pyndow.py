@@ -15,7 +15,7 @@ import root
 import config
 import window
 import events
-import drag
+import grab
 import command
 import client
 import misc
@@ -38,6 +38,8 @@ state.conn.core.ChangeWindowAttributesChecked(
 
 events.register_callback(xcb.xproto.ClientMessageEvent,
                          root.cb_ClientMessage, state.root)
+events.register_callback(xcb.xproto.MappingNotifyEvent,
+                         root.cb_MappingNotifyEvent, state.root)
 events.register_callback(xcb.xproto.MapRequestEvent,
                          client.cb_MapRequestEvent, state.root)
 events.register_callback(xcb.xproto.FocusInEvent,
@@ -46,10 +48,20 @@ events.register_callback(xcb.xproto.FocusOutEvent,
                          client.cb_FocusOutEvent, state.root)
 events.register_callback(xcb.xproto.ConfigureRequestEvent,
                          window.cb_ConfigureRequestEvent, state.root)
-events.register_callback(xcb.xproto.MotionNotifyEvent, drag.drag, state.pyndow,
-                         None, None, None)
-events.register_callback(xcb.xproto.ButtonReleaseEvent, drag.end, state.pyndow,
-                         None, None, None)
+events.register_callback(xcb.xproto.MotionNotifyEvent, grab.drag_do,
+                         state.pyndow, None, None, None)
+events.register_callback(xcb.xproto.ButtonReleaseEvent, grab.drag_end,
+                         state.pyndow, None, None, None)
+
+def test_start(e):
+    print '-' * 50, '\n', 'START\n', '-' * 50
+def test_do(e):
+    print '-' * 50, '\n', 'DO\n', '-' * 50
+def test_done(e):
+    print '-' * 50, '\n', 'DONE\n', '-' * 50
+
+events.register_keygrab(test_start, test_do, test_done, state.root,
+                        config.get_option('cycle'), 'Mod1-Alt_L')
 
 state.root_focus()
 
