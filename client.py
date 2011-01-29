@@ -35,7 +35,7 @@ class Client(object):
     def __init__(self, wid):
         self.win = window.Window(wid)
 
-        self._unmapped = True
+        self.hidden = True
         self.__net_wm_name = False
         self.catchall = False # Temp
         self.maximized = False
@@ -118,6 +118,7 @@ class Client(object):
 
     def unmanage(self):
         # No more..!
+        focus.remove(self)
         self.unlisten()
         self.stop_timeout()
         icccm.set_wm_state(state.conn, self.win.id, icccm.State.Withdrawn, 0)
@@ -139,9 +140,11 @@ class Client(object):
 
     def focus(self):
         if self.focus_notify():
-            event.send_event(state.conn, self.win.id, 0,
-                event.pack_client_message(self.win.id, aid('WM_PROTOCOLS'),
-                                          aid('WM_TAKE_FOCUS'), events.time))
+            packed = event.pack_client_message(self.win.id,
+                                               aid('WM_PROTOCOLS'),
+                                               aid('WM_TAKE_FOCUS'),
+                                               events.time)
+            event.send_event(state.conn, self.win.id, 0, packed)
 
         if self.can_focus():
             state.conn.core.SetInputFocusChecked(
@@ -154,6 +157,9 @@ class Client(object):
         self.attention_stop()
         focus.above(self)
         self.frame.set_state(frame.State.Active)
+
+        for client in focus.get_stack()[:-1]:
+            client.unfocused()
 
     def unfocused(self):
         if (self.catchall and
@@ -192,8 +198,11 @@ class Client(object):
     def undecorate(self):
         frame.switch(self.frame, frame.Nada)
 
+    def minimize(self):
+        self.unmap()
+
     def map(self):
-        if not self._unmapped:
+        if not self.hidden:
             return
 
         icccm.set_wm_state(state.conn, self.win.id, icccm.State.Normal, 0)
@@ -210,7 +219,7 @@ class Client(object):
         state.ungrab()
         # END GRAB
 
-        self._unmapped = False
+        self.hidden = False
 
     def unmap(self):
         # I could de-select UnmapNotify events from being sent before unmap,
@@ -226,11 +235,11 @@ class Client(object):
         fallback = focus.focused() is self
         self.frame.unmap()
         self.layer.remove(self)
-        focus.remove(self)
+
+        self.hidden = True
+
         if fallback:
             focus.fallback()
-
-        self._unmapped = True
 
         state.conn.flush()
 
@@ -297,7 +306,7 @@ class Client(object):
     def can_delete(self):
         return aid('WM_DELETE_WINDOW') in self.win.protocols
 
-    def is_alive(self):
+    def is_alive(self, force=False):
         state.sync()
 
         event.read(state.conn)
@@ -310,6 +319,12 @@ class Client(object):
                     return False
 
                 ignore = max(ignore - 1, 0)
+
+        # Sometimes we might be ahead of ourselves, so do a hard check
+        try:
+            state.conn.core.GetGeometry(self.win.id).reply()
+        except:
+            return False
 
         return True
 
@@ -408,7 +423,7 @@ class Client(object):
         self.unmanage()
 
     def cb_UnmapNotifyEvent(self, e):
-        if self._unmapped:
+        if self.hidden:
             return
 
         if self.__unmap_ignore > 0:

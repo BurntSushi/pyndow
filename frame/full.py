@@ -353,7 +353,7 @@ class Minimize(_WindowButton):
         if not _WindowButton.cb_action(self, e):
             return
 
-        print 'Minimize!'
+        self.frame.client.minimize()
 
 class Icon(_FrameWindow):
     def __new__(cls, frame):
@@ -393,9 +393,9 @@ class Icon(_FrameWindow):
         # If for some reason we couldn't get an icon...
         if icon is None or not icon['width'] or not icon['height']:
             for st in self._imgs:
-                self._imgs[st] = renderin.box(self.frame.colors[st]['bg'],
-                                              self.pos['width'],
-                                              self.pos['height'])
+                self._imgs[st] = rendering.box(self.frame.colors[st]['bg'],
+                                               self.pos['width'],
+                                               self.pos['height'])
 
             return
 

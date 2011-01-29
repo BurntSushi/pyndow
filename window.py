@@ -94,6 +94,9 @@ class GeometryWindow(SimpleWindow):
 
     @property
     def geom(self):
+        if self._geom is None:
+            self._geom = state.conn.core.GetGeometry(self.id)
+
         if isinstance(self._geom, xcb.xproto.GetGeometryCookie):
             self._geom = self._geom.reply()
 
@@ -118,20 +121,6 @@ class Window(GeometryWindow):
         self._motif = motif.get_hints(state.conn, self.id)
         self._wmname = ewmh.get_wm_name(state.conn, self.id)
         self._wmclass = icccm.get_wm_class(state.conn, self.id)
-
-    #def is_alive(self):
-        #state.sync()
-
-        #event.read(state.conn)
-        #for e in event.peek():
-
-
-        #try:
-            #state.conn.core.GetGeometry(self.id).reply()
-        #except:
-            #return False
-
-        #return True
 
     def validate_size(self, width, height):
         nm = self.normal_hints
@@ -192,10 +181,7 @@ class Window(GeometryWindow):
 
         return True
 
-    # Determinations
-
-    def determine_wm_name(self):
-        preferred = ewmh.get_wm_name(state.conn, self.id)
+    # Properties
 
     @property
     def properties(self):

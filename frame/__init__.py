@@ -22,7 +22,7 @@ class State:
 
 class _FrameWindow(window.GeometryWindow):
     def __new__(cls, frame):
-        self = window.GeometryWindow.__new__(cls, frame)
+        self = window.GeometryWindow.__new__(cls)
         self.frame = frame
 
         return self

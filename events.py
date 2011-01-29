@@ -418,7 +418,17 @@ def __dispatch_KeyEvent(e, xevent):
     for mod in keysym.TRIVIAL_MODS:
         mods &= ~mod
 
+    # If there's a grab, we should always redirect key events to a
+    # special pyndow window. This is because the grab may not happy quickly
+    # enough to catch an event that ought to *end* a grab.
+    if state.grab_keyboard:
+        e.event = state.pyndow
+
     cbs = __dispatch_fetch_callbacks(xevent, e.event, mods, keycode, None)
+
+    # If we've grabbed the keyboard, we might not want to listen to modifiers
+    if state.grab_keyboard:
+        cbs += __dispatch_fetch_callbacks(xevent, e.event, 0, keycode, None)
 
     for cb in cbs:
         cb(e=e)

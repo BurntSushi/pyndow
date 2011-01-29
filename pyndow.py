@@ -19,6 +19,7 @@ import grab
 import command
 import client
 import misc
+import popup.cycle
 
 aid = partial(util.get_atom, state.conn)
 
@@ -53,15 +54,25 @@ events.register_callback(xcb.xproto.MotionNotifyEvent, grab.drag_do,
 events.register_callback(xcb.xproto.ButtonReleaseEvent, grab.drag_end,
                          state.pyndow, None, None, None)
 
-def test_start(e):
-    print '-' * 50, '\n', 'START\n', '-' * 50
-def test_do(e):
-    print '-' * 50, '\n', 'DO\n', '-' * 50
-def test_done(e):
-    print '-' * 50, '\n', 'DONE\n', '-' * 50
+#events.register_keygrab(popup.cycle.start, popup.cycle.do_next,
+                        #popup.cycle.end, state.root,
+                        #config.get_option('cycle_next'), 'Alt_L')
 
-events.register_keygrab(test_start, test_do, test_done, state.root,
-                        config.get_option('cycle'), 'Mod1-Alt_L')
+#events.register_keygrab(popup.cycle.start, popup.cycle.do_prev,
+                        #popup.cycle.end, state.root,
+                        #config.get_option('cycle_prev'), 'Alt_L')
+
+k_cyc_n = config.get_option('cycle_next')
+k_cyc_p = config.get_option('cycle_prev')
+
+events.register_keypress(popup.cycle.start_next, state.root, k_cyc_n)
+events.register_keypress(popup.cycle.do_next, state.pyndow, k_cyc_n)
+
+events.register_keypress(popup.cycle.start_prev, state.root, k_cyc_p)
+events.register_keypress(popup.cycle.do_prev, state.pyndow, k_cyc_p)
+
+events.register_keyrelease(popup.cycle.end, state.pyndow, 'Alt_L')
+events.register_keyrelease(popup.cycle.end, state.pyndow, 'Alt_R')
 
 state.root_focus()
 

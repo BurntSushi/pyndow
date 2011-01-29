@@ -123,7 +123,12 @@ option_types = {
     'frm_border_bg_c': {'exec': gethex, 'default': 0x3366ff},
     'frm_border_thin_clr': {'exec': gethex, 'default': 0x000000},
     'frm_border_brdr_sz': {'exec': getint, 'default': 5},
-    'cycle': {'exec': get, 'default': 'Mod1-Tab'},
+    'cycle_next': {'exec': get, 'default': 'Mod1-Tab'},
+    'cycle_prev': {'exec': get, 'default': 'Mod1-Shift-Tab'},
+    'cycle_brdr_sz': {'exec': getint, 'default': 1},
+    'cycle_brdr_clr': {'exec': gethex, 'default': 0x000000},
+    'cycle_bg': {'exec': gethex, 'default': 0xffffff},
+    'cycle_icn_sz': {'exec': getint, 'default': 1},
     'all_tilers': {
         'exec': PyndowConfigParser.getlist,
         'default': ['Vertical']

@@ -13,6 +13,9 @@ setup = conn.get_setup()
 rsetup = setup.roots[0]
 root = rsetup.root
 
+rsetup.width_in_pixels = 1920
+rsetup.height_in_pixels = 1080
+
 pyndow = conn.generate_id()
 conn.core.CreateWindow(rsetup.root_depth, pyndow, root, -1000, -1000, 1,
                        1, 0, xcb.xproto.WindowClass.InputOutput,
