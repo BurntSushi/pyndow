@@ -1,0 +1,23 @@
+Clients attempting to acquire a selection must set the time value of the
+SetSelectionOwner request to the timestamp of the event triggering the
+acquisition attempt, not to CurrentTime . A zero-length append to a
+property is a way to obtain a timestamp for this purpose; the timestamp is
+in the corresponding PropertyNotify event.
+
+-------------------------------------------------------------------------------
+
+If a manager loses ownership of a manager selection, this means that a new
+manager is taking over its responsibilities. The old manager must release
+all resources it has managed, and must then destroy the window that owned
+the selection. For example, a window manager losing ownership of WM_S2 must
+deselect from SubstructureRedirect on the root window of screen 2 before
+destroying the window that owned WM_S2.
+
+-------------------------------------------------------------------------------
+
+Immediately after a manager successfully acquires ownership of a manager
+selection, it should announce its arrival by sending a ClientMessage event.
+This event should be sent using the SendEvent protocol request with the
+following arguments:
+
+-------------------------------------------------------------------------------

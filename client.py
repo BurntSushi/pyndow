@@ -95,14 +95,6 @@ class Client(object):
             self.win.id
         )
 
-        #ewmh.set_wm_allowed_actions_checked(state.conn, self.win.id, map(aid, [
-            #'_NET_WM_ACTION_MOVE', '_NET_WM_ACTION_RESIZE',
-            #'_NET_WM_ACTION_MINIMIZE', '_NET_WM_ACTION_SHADE',
-            #'_NET_WM_ACTION_MAXIMIZE_HORZ', '_NET_WM_ACTION_MAXIMIZE_VERT',
-            #'_NET_WM_ACTION_FULLSCREEN', '_NET_WM_ACTION_CHANGE_DESKTOP',
-            #'_NET_WM_ACTION_CLOSE', '_NET_WM_ACTION_ABOVE',
-            #'_NET_WM_ACTION_BELOW'])).check()
-
         self.win.configure(border_width=0)
 
         # If the initial state is iconic, don't map...

@@ -1,0 +1,88 @@
+WINDOWS:
+    Chrome - ICCCM spec, EWMH spec
+    Geany - NOTES, Pyndow, xpyb-util, xpyb, openbox, kwin, ~qtile, ~pytyle2
+    ---VMWare - ArchlinuxKDE--- Xephyr! And another tty sometimes too...
+
+Create a "focus switcher" dialog window. I want this so I can mess around with
+"iconified" windows without needing a panel. ... Done! Now add some text to it,
+but can I do this later, pwwetty please? It also needs to be smarter about its
+geometry... Else it would be wider than the screen!
+
+Left off: Client messages. Should we start with those now? Can of worms...
+Also want to get the minimize/maximize/close buttons in the frame. Probably
+this first.
+
+Layouts and transients soon... Think of a good workspace/monitor model!
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+
+Make sure to use the SaveSet to keep windows alive.
+
+-------------------------------------------------------------------------------
+
+FocusIn
+mode NOT NotifyGrab (1), NotifyUngrab (2)
+detail IS NotifyInferior (2), NotifyVirtual (1), NotifyNonlinearVirtual (4)
+Mode = 0 | 3
+Detail = 1 | 2 | 4
+
+FocusOut
+mode NOT NotifyGrab (1), NotifyUngrab (2)
+detail IS NotifyVirtual (1), NotifyNonlinearVirtual (4)
+Mode = 0 | 3
+Detail = 1 | 4
+
+Use FocusIn/FocusOut events to keep track of focus ordering. This needs to
+be updated when clients are managed/unmanaged. Then we can search for
+windows to focus by looking at the stack. The stack should contain windows
+that are unmapped too. Should we do this for layers too? Why not?
+
+-------------------------------------------------------------------------------
+
+Remember to check back with the reparenting code when implementing pyndow's
+ability to manage pre-existing windows. Reparenting generates an unmap
+request that we may need to ignore/handle specially.
+
+-------------------------------------------------------------------------------
+
+Layouts
+
+Should be seamlessly integrated into window management. In particular, layouts
+will come into play when configuring any given window. (And this is one of the
+big reasons I've set out to develop my own window manager... A window manager
+has the unique capability of using SubstructureRedirect on the root window,
+which allows one to enforce a window placement policy.)
+
+In particular, whenever a window is moved through user input, callbacks should
+be redirected to the window's corresponding layout. That is, when a window is
+dragged, a floating layout will move the window along with the mouse. However,
+a tiling layout may not move the window until the mouse is in a position such
+that the window would actually move. (i.e., another window's slot). Similarly,
+in a tiling layout, resizing one window allows us to resize other windows.
+
+After making some progress on decorations, move on to abstracting window
+placement policy. Make sure new layouts can be added easily.
+
+-------------------------------------------------------------------------------
+
+Check out how Openbox handles windows that don't want any decorations, like
+Chromium.
+
+Answer: SHAPE extension. This is doable, check into it.
+
+-------------------------------------------------------------------------------
+
+See the client_get_type_and_transientness function for transientness in
+Openbox.
+
+-------------------------------------------------------------------------------
+
+The layers stack method currently configures every window in the stack every
+time we want to restack the windows. This is probably okay, but I think it
+could feasibly be optimized. For instance, consider the windows A B C D. If we
+focus B, the stacking order becomes B A C D. Only the siblings of A and B
+changed.

@@ -1,0 +1,143 @@
+A first attempt at a screen/workspace/layout model.
+
+Conceptual terminology:
+    monitor     A physical display device (i.e., "head") that is part of the
+                X default screen. (i.e., to get any more than one monitor in
+                Pyndow, it must be reported via the Xinerama or Xrandr
+                extensions). Multiple X Screens are not supported. (Maybe they
+                work though? Probably not...)
+
+    workspace   A workarea or a "desktop." (Compiz calls these "viewports.")
+
+    layout      A set of rules governing window placement.
+
+Rules:
+    monitor     There should be a one-to-one correspondence between the number
+                of monitors in use and the number of instances of the Monitor
+                class.
+
+                Each monitor contains a set of available workspaces. This set
+                must be uniform in size across all monitors. For example, if
+                a workspace "games" exists, it must exist in each monitor
+                object created.
+
+                Every monitor *always* has an active workspace.
+
+                One monitor's active workspace can be different from another
+                monitor's active workspace.
+
+                Each monitor should provide facilities to switch the active
+                workspace.
+
+                Each monitor should report its position and size in the root
+                window.
+
+                Each monitor should provide facilities to transform monitor
+                coordinates to root window coordinates. For example, if the
+                second monitor is has geometry [1920, 0, 1280, 1024], then
+                a window on this monitor having position (0, 0) would be
+                mapped to position (1920, 0) in the root window.
+
+                Each monitor should provide facilities for fetching a list
+                of windows on it (by filtering the state.wins dict).
+
+                Every window must be on one and only one window.
+
+    workspace   There can be any number of workspaces.
+
+                Every window must be on at least one workspace.
+
+                Every workspace contains a floating layout model.
+
+                Every workspace contains an optional tiling layout model.
+
+                Only one tiling layout is allowed to be active at any time for
+                a particular workspace.
+
+    layout      Controls *all* placement of windows.
+
+                Only controls windows that are tracked by the layout.
+
+                All windows must be governed by one and one layout at any
+                given time. The default layout is the floating layout.
+
+Model:
+
+There are essentially two approaches to storing the state above. One approach
+is to have each monitor/workspace track exactly which windows it is responsible
+for. The other approach is to omit this. Without tracking windows explicitly,
+it is implicit that whenever we want a list of windows that belongs to a given
+workspace or monitor, we must filter all windows. This can be burdensome.
+However, tracking windows also requires us to pay homage to the
+monitor/workspace every time a window changes its monitor/workspace.
+
+I believe I've decided to go with tracking the windows explicitly. At the very
+least, every window must know which workspace/monitor it belongs to. All we
+need to do is tie this state with workspace/monitor tracking. (i.e., it should
+be impossible to update the "workspace" attribute of a client without
+possibly updating the list of windows in the client's old workspace and its
+new workspace.)
+
+When we "track" windows, store references to the client objects themselves.
+
+The general focus model will still work, but when calling "fallback," we need
+to add an additional filtering mechanism based on workspace and then monitor.
+Which raises an interesting point. In Openbox, focus fallback does not
+discriminate based on monitor, but I think we should. In particular, this
+also allows us to stay confined in a "layout." Otherwise, the focus model
+should not need any modification. A global stack is fine.
+
+The layer model should also need no modification. Again, it is okay to keep a
+global stack here. An interesting possibility is if a layout wants to modify
+the stacking order of a set of windows. I think this is possible if we open up
+the layers module to allow for inserting windows into an arbitrary position in
+the stack (instead of just to the top or bottom). Potentially explore the
+idea of adding new layers arbitrarily. (For instance, the "Center" layout
+always has one window in the middle above all of the other windows.)
+
+Layouts must also track windows and should only be responsible for the
+windows it is tracking. It should never try to track a window unless it is
+explicitly told to do so. If a window isn't in a tiling layout, it must be in
+the standard floating layout. A floating layout can be in operation at the
+same time as a tiling layout (in the same workspace). A workspace should
+manage which windows are in the standard floating layer, and which windows are
+in the tiling layer. As a standard rule, if no tiling layer is active, a window
+must be in the workspace's floating layer. If a tiling layer is active, unless
+otherwise specified by the user, the window should probably be in the tiling
+layer.
+
+A floating layout probably won't need much storage, although I'd like to have
+keyboard shortcuts for moving from one window to the next (as defined in a
+cartesian plane). i.e., going "up" would move to the window closest to the
+current window in the "up" direction.
+
+A tiling layout, on the other hand, needs some storage. I really really like
+the tree structure I'm using in pytyle2. It's currently only used in the manual
+style layout, but I don't see why it can't be carried over to the auto-style
+layouts (where hsplits and vsplits are done automatically, and certain windows
+are grouped into a "master" area and some grouped into a "slaved" area).
+In particular, an auto-style layout would be using the natural structure of a
+manual layout, but in a highly controlled and *automated* form.
+
+One last thing that needs to be address before programming tiling layout
+storage is the ability to "undo" splits and such. In general, we need some kind
+of memory when it comes to tiling storage. While "undo" or "redo" is really
+only applicable to manual style layouts, remembering where windows are in a
+layout isn't.
+
+Which brings us to another point---should each layout have its own memory of
+windows, or should it try to translate the positions of the windows as they are
+into their closest positions in the new layout? I think this is really hard.
+(This only applies when changing a tiling layout to another tiling layout.) In
+fact, I think it makes better sense to use a shared tree structure. Each layout
+can then be seen as nothing more than a different mechanism for controlling
+the tree structure. When tiling layouts are changed, the same tree structure
+is used, and at the very least, we get some form of consistency for free.
+
+Now, what about keeping a "history"? I think duplicating the tree at each split
+is out of the question. Perhaps we could create a smaller data structure that
+stores a very bare-bones version of each step in the layout. Undo/redo
+should be with regard to splits (not sizes or window placement), so just store
+a mini-tree structure for each split. This means we need to make our tree quite
+versatile so that an arbitrary structure can be imposed on any other structure
+seamlessly.
