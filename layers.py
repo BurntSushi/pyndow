@@ -1,5 +1,4 @@
 import xcb.xproto
-
 import state
 
 class Layer(object):

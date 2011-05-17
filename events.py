@@ -29,8 +29,8 @@ __latent = set()
 # only be ungrabbed from the X server if the count is zero.
 __grabbed = defaultdict(int)
 
-# Keeps track of the most recent time...
-time = xcb.xproto.Time.CurrentTime
+# Keeps track of the most recent time...  
+time = xcb.xproto.Time.CurrentTime 
 
 def __parse_keystring(key_string):
     modifiers = 0
@@ -46,17 +46,17 @@ def __parse_keystring(key_string):
 
     return modifiers, keycode
 
-def __parse_buttonstring(button_string):
-    modifiers = 0
-    button = None
+def __parse_buttonstring(button_string): 
+    modifiers = 0 
+    button = None 
 
-    for part in button_string.split('-'):
-        if hasattr(xcb.xproto.KeyButMask, part):
-            modifiers |= getattr(xcb.xproto.KeyButMask, part)
-        else:
-            button = int(part)
+    for part in button_string.split('-'): 
+        if hasattr(xcb.xproto.KeyButMask, part): 
+            modifiers |= getattr(xcb.xproto.KeyButMask, part) 
+        else: 
+            button = int(part) 
 
-    return modifiers, button
+    return modifiers, button 
 
 def register_callback(xevent, callback, wid, modifiers=None,
                       keycode=None, button=None):

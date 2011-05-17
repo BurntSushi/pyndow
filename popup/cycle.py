@@ -150,7 +150,10 @@ class CycleWindow(_PopupWindow):
 
         self.current = self.current % len(self.wins)
 
-        self.configure(**self.determine_geometry())
+        # Force the stack mode to be above.
+        # The layers module stacks from the bottom up, so this is okay.
+        cargs = {'stack_mode': xcb.xproto.StackMode.Above}
+        self.configure(**dict(cargs, **self.determine_geometry()))
 
         self.inner.configure(x=c_brdr_sz, y=c_brdr_sz,
                              width=self.geom['width'] - 2 * c_brdr_sz,

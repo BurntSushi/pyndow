@@ -94,7 +94,7 @@ class PyndowConfigParser(ConfigParser.SafeConfigParser):
 
         return retval
 
-config_path = os.path.join('/home/andrew/')
+config_path = os.path.join('/home/andrew/pyndow/')
 config_filename = 'config.ini'
 
 # Aliases
