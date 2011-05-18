@@ -2,8 +2,9 @@ import xcb, xcb.xproto
 
 import Image, ImageDraw, ImageEnhance
 
-import ewmh
-import image
+import xpybutil.util as util
+import xpybutil.ewmh as ewmh
+import xpybutil.image as image
 
 import state
 import events
@@ -40,10 +41,22 @@ class Title(_FrameWindow):
                              self.frame.client.cb_move_drag,
                              self.frame.client.cb_move_end,
                              self.id, '1')
+        events.register_callback(xcb.xproto.PropertyNotifyEvent,
+                                 self.cb_PropertyNotifyEvent,
+                                 self.frame.client.win.id)
 
         self.set_text(self.frame.client.win.wmname)
 
         self.map()
+
+    # I'll probably scrub this in favor of a hook "name change"
+    # There's too much reliance on 'client.win.wmname' being updated before
+    def cb_PropertyNotifyEvent(self, e):
+        prop = util.get_atom_name(state.conn, e.atom)
+        if prop in ('_NET_WM_NAME', 'WM_NAME'):
+            print self.frame.client.win.wmname
+            self.set_text(self.frame.client.win.wmname)
+            self.render()
 
     def set_text(self, txt):
         font_file = '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf'

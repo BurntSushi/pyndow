@@ -3,12 +3,13 @@ import sys
 import time
 import traceback
 
-import xcb, xcb.xproto
+import xcb
+import xcb.xproto as xproto
 
-import util
-import icccm
-import ewmh
-import event
+import xpybutil.util as util
+import xpybutil.icccm as icccm
+import xpybutil.ewmh as ewmh
+import xpybutil.event as event
 
 import state
 import root
@@ -28,51 +29,50 @@ util.build_atom_cache(state.conn, ewmh)
 
 command.init()
 
-state.conn.core.ChangeWindowAttributesChecked(
-    state.root,
-    xcb.xproto.CW.EventMask | xcb.xproto.CW.Cursor,
-    [xcb.xproto.EventMask.SubstructureNotify |
-     xcb.xproto.EventMask.SubstructureRedirect |
-     xcb.xproto.EventMask.PropertyChange |
-     xcb.xproto.EventMask.FocusChange, state.cursors['LeftPtr']]
-).check()
+masks = [ xproto.EventMask.SubstructureNotify 
+        | xproto.EventMask.SubstructureRedirect
+        | xproto.EventMask.PropertyChange
+        | xproto.EventMask.FocusChange
+        ]
+state.core.ChangeWindowAttributesChecked(state.root, xproto.CW.EventMask, 
+                                         masks).check()
 
-events.register_callback(xcb.xproto.ClientMessageEvent,
+events.register_callback(xproto.ClientMessageEvent,
                          root.cb_ClientMessage, state.root)
-events.register_callback(xcb.xproto.MappingNotifyEvent,
+events.register_callback(xproto.MappingNotifyEvent,
                          root.cb_MappingNotifyEvent, state.root)
-events.register_callback(xcb.xproto.MapRequestEvent,
+events.register_callback(xproto.MapRequestEvent,
                          client.cb_MapRequestEvent, state.root)
-events.register_callback(xcb.xproto.FocusInEvent,
+events.register_callback(xproto.FocusInEvent,
                          client.cb_FocusInEvent, state.root)
-events.register_callback(xcb.xproto.FocusOutEvent,
+events.register_callback(xproto.FocusOutEvent,
                          client.cb_FocusOutEvent, state.root)
-events.register_callback(xcb.xproto.ConfigureRequestEvent,
+events.register_callback(xproto.ConfigureRequestEvent,
                          window.cb_ConfigureRequestEvent, state.root)
-events.register_callback(xcb.xproto.MotionNotifyEvent, grab.drag_do,
+events.register_callback(xproto.MotionNotifyEvent, grab.drag_do,
                          state.pyndow, None, None, None)
-events.register_callback(xcb.xproto.ButtonReleaseEvent, grab.drag_end,
+events.register_callback(xproto.ButtonReleaseEvent, grab.drag_end,
                          state.pyndow, None, None, None)
 
-#events.register_keygrab(popup.cycle.start, popup.cycle.do_next,
-                        #popup.cycle.end, state.root,
-                        #config.get_option('cycle_next'), 'Alt_L')
+events.register_keygrab(popup.cycle.start_next, popup.cycle.do_next,
+                        popup.cycle.end, state.root,
+                        config.get_option('cycle_next'))
 
-#events.register_keygrab(popup.cycle.start, popup.cycle.do_prev,
-                        #popup.cycle.end, state.root,
-                        #config.get_option('cycle_prev'), 'Alt_L')
+events.register_keygrab(popup.cycle.start_prev, popup.cycle.do_prev,
+                        popup.cycle.end, state.root,
+                        config.get_option('cycle_prev'))
 
-k_cyc_n = config.get_option('cycle_next')
-k_cyc_p = config.get_option('cycle_prev')
-
-events.register_keypress(popup.cycle.start_next, state.root, k_cyc_n)
-events.register_keypress(popup.cycle.do_next, state.pyndow, k_cyc_n)
-
-events.register_keypress(popup.cycle.start_prev, state.root, k_cyc_p)
-events.register_keypress(popup.cycle.do_prev, state.pyndow, k_cyc_p)
-
-events.register_keyrelease(popup.cycle.end, state.pyndow, 'Alt_L')
-events.register_keyrelease(popup.cycle.end, state.pyndow, 'Alt_R')
+# k_cyc_n = config.get_option('cycle_next') 
+# k_cyc_p = config.get_option('cycle_prev') 
+#  
+# events.register_keypress(popup.cycle.start_next, state.root, k_cyc_n) 
+# events.register_keypress(popup.cycle.do_next, state.pyndow, k_cyc_n) 
+#  
+# events.register_keypress(popup.cycle.start_prev, state.root, k_cyc_p) 
+# events.register_keypress(popup.cycle.do_prev, state.pyndow, k_cyc_p) 
+#  
+# events.register_keyrelease(popup.cycle.end, state.pyndow, 'Alt_L') 
+# events.register_keyrelease(popup.cycle.end, state.pyndow, 'Alt_R') 
 
 state.root_focus()
 

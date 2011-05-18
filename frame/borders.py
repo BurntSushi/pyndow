@@ -2,8 +2,8 @@ from functools import partial
 
 import xcb.xproto
 
-import ewmh
-import image
+import xpybutil.ewmh as ewmh
+import xpybutil.image as image
 
 import state
 import events

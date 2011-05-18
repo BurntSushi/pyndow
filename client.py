@@ -4,10 +4,10 @@ import sys
 
 import xcb.xproto
 
-import util
-import icccm
-import ewmh
-import event
+import xpybutil.util as util
+import xpybutil.icccm as icccm
+import xpybutil.ewmh as ewmh
+import xpybutil.event as event
 
 import state
 import window
@@ -116,7 +116,7 @@ class Client(object):
         icccm.set_wm_state(state.conn, self.win.id, icccm.State.Withdrawn, 0)
         self.frame.destroy()
         events.unregister_window(self.win.id)
-        del state.wins[self.win.id]
+        del state.windows[self.win.id]
 
     def close(self):
         if self.can_delete():
@@ -496,12 +496,12 @@ class Client(object):
         return ewmh.get_wm_name(state.conn, self.win.id).reply()
 
 def get(wid):
-    return state.wins.setdefault(wid, None)
+    return state.windows.setdefault(wid, None)
 
 def manage(wid):
-    state.wins[wid] = Client(wid)
+    state.windows[wid] = Client(wid)
 
-    return state.wins[wid]
+    return state.windows[wid]
 
 #def manage_existing(wid):
     #try:

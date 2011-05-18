@@ -1,6 +1,6 @@
 import xcb.xproto
 
-import ewmh
+import xpybutil.ewmh as ewmh
 
 import state
 import events
@@ -285,7 +285,7 @@ class _Frame(object):
             'direction': direction
         }
 
-        return cursor
+        return { 'grab': True, 'cursor': cursor }
 
     def resize_drag(self, root_x, root_y, event_x, event_y):
         # shortcut
@@ -346,7 +346,7 @@ class _Frame(object):
             'root_y': root_y
         }
 
-        return state.cursors['Fleur']
+        return { 'grab': True, 'cursor': state.cursors['Fleur'] }
 
     def move_drag(self, root_x, root_y):
         self.parent.geom['x'] += root_x - self.moving['root_x']

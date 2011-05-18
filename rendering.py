@@ -1,18 +1,16 @@
 from functools import partial
 import os.path
 
-import xcb.xproto
+import xcb.xproto as xproto
 import Image, ImageDraw, ImageFont
 
-import image
+import xpybutil.image as image
 
-import state
+from state import conn, core, root, rsetup
 
-#imgs = os.path.join('.', 'images')
-imgs = os.path.join('/', 'home', 'andrew', 'data', 'projects', 'pyndow', 'src',
-                    'images')
-stdgc = state.conn.generate_id()
-state.conn.core.CreateGC(stdgc, state.root, 0, [])
+imgs = os.path.join('/', 'home', 'andrew', 'clones', 'pyndow', 'images')
+stdgc = conn.generate_id()
+core.CreateGC(stdgc, root, 0, [])
 
 # Load images
 p = partial(os.path.join, imgs)
@@ -24,29 +22,27 @@ shade = Image.open(p('shade.png'))
 openbox = Image.open(p('openbox.png'))
 
 def paint_pix(wid, data, w, h):
-    pix = state.conn.generate_id()
-    state.conn.core.CreatePixmap(state.rsetup.root_depth, pix,
-                                 state.root, w, h)
+    pix = conn.generate_id()
+    core.CreatePixmap(rsetup.root_depth, pix, root, w, h)
 
-    state.conn.core.PutImage(xcb.xproto.ImageFormat.ZPixmap, pix, stdgc, w, h,
-                             0, 0, 0, 24, len(data), data)
+    core.PutImage(xproto.ImageFormat.ZPixmap, pix, stdgc, w, h, 0, 0, 0, 24, 
+                  len(data), data)
 
-    state.conn.core.ChangeWindowAttributes(wid, xcb.xproto.CW.BackPixmap,
-                                           [pix])
+    core.ChangeWindowAttributes(wid, xproto.CW.BackPixmap, [pix])
 
-    state.conn.core.ClearArea(0, wid, 0, 0, 0, 0)
+    core.ClearArea(0, wid, 0, 0, 0, 0)
 
-    state.conn.core.FreePixmap(pix)
+    core.FreePixmap(pix)
 
 def draw_text_bgcolor(font, text, color_bg, color_text, max_width, max_height):
     fw, fh = get_text_extents(font, text)
 
     w, h = min(fw, max_width), min(fh, max_height)
 
-    im = Image.new('RGBA', (w, h), color=image.parse_color(color_bg))
+    im = Image.new('RGBA', (w, h), color=image.color_humanize(color_bg))
     d = ImageDraw.Draw(im)
     d.text((0, 0), unicode(text, 'utf-8'), font=font,
-           fill=image.parse_color(color_text))
+           fill=image.color_humanize(color_text))
 
     return im
 
@@ -61,7 +57,7 @@ def get_text_extents(font, text):
 def blend(img, mask, color, width, height, alpha=1):
     assert width > 0 and height > 0
 
-    bg = Image.new('RGBA', (width, height), color=image.parse_color(color))
+    bg = Image.new('RGBA', (width, height), color=image.color_humanize(color))
     blended = Image.composite(img, bg, mask)
 
     if alpha != 1:
@@ -107,7 +103,7 @@ def border(border_color, bg_color, width, height, orient):
     return im
 
 def corner(border_color, bg_color, width, height, orient):
-    im = Image.new('RGBA', (width, height), color=image.parse_color(bg_color))
+    im = Image.new('RGBA', (width, height), color=image.color_humanize(bg_color))
     d = ImageDraw.Draw(im)
 
     coords = None
@@ -129,6 +125,6 @@ def corner(border_color, bg_color, width, height, orient):
     return im
 
 def box(color, width, height):
-    im = Image.new('RGBA', (width, height), color=image.parse_color(color))
+    im = Image.new('RGBA', (width, height), color=image.color_humanize(color))
 
     return im

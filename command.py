@@ -5,8 +5,8 @@ from functools import partial
 
 import xcb.xproto
 
-import keysym
-import icccm
+import xpybutil.keysym as keysym
+import xpybutil.icccm as icccm
 
 import state
 import config

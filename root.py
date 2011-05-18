@@ -2,9 +2,9 @@ from functools import partial
 
 import xcb.xproto
 
-import util
-import keysym
-import event
+import xpybutil.util as util
+import xpybutil.keysym as keysym
+import xpybutil.event as event
 
 import state
 import events
@@ -12,8 +12,8 @@ import events
 aname = partial(util.get_atom_name, state.conn)
 
 def cb_ClientMessage(e):
-    if e.window in state.wins:
-        print state.wins[e.window].win.wmname
+    if e.window in state.windows:
+        print state.windows[e.window].win.wmname
 
     if aname(e.type) == '_PYNDOW_CMD':
         state.debug_obj(e)
@@ -35,3 +35,7 @@ def cb_MappingNotifyEvent(e):
 
         state.set_kbmap(newmap)
         events.regrab(changes)
+    # Update the modifier mappings that may have changed
+    elif e.request == xcb.xproto.Mapping.Modifier:
+        state.set_keys_to_mods(keysym.get_keys_to_mods(state.conn))
+

@@ -3,8 +3,8 @@ from functools import partial
 
 import xcb.xproto
 
-import ewmh
-import keysym
+import xpybutil.ewmh as ewmh
+import xpybutil.keysym as keysym
 
 import state
 import grab as grabber
@@ -241,12 +241,11 @@ def __register_key(xevent, callback, wid, key_string):
 # It may seem like we don't need to use the "grab" module here since we're
 # setting up three event callbacks, but the "grab" module is still useful
 # to abstract the grab keyboard stuff.
-def register_keygrab(start, during, end, wid, key_string, stop_key_string):
-    register_keypress(partial(grabber.key_start, start, during, end), wid,
-                      key_string)
-    register_keypress(grabber.key_do, state.pyndow, key_string)
-    register_keyrelease(grabber.key_end, state.pyndow, stop_key_string)
-    register_keyrelease(grabber.key_end, state.pyndow, 'Mod1-Alt_R') # temp
+def register_keygrab(start, during, end, wid, key_string):
+    start = partial(grabber.key_start, start, end, 
+                    __parse_keystring(key_string))
+    register_keypress(start, wid, key_string)
+    register_keypress(partial(grabber.key_do, during), state.pyndow, key_string)
 
 def register_keypress(callback, wid, key_string):
     return __register_key(xcb.xproto.KeyPressEvent, callback, wid, key_string)
@@ -419,16 +418,21 @@ def __dispatch_KeyEvent(e, xevent):
         mods &= ~mod
 
     # If there's a grab, we should always redirect key events to a
-    # special pyndow window. This is because the grab may not happy quickly
+    # special pyndow window. This is because the grab may not happen quickly
     # enough to catch an event that ought to *end* a grab.
     if state.grab_keyboard:
         e.event = state.pyndow
 
-    cbs = __dispatch_fetch_callbacks(xevent, e.event, mods, keycode, None)
+        # If the keycode is a modifier, remove it from the mods
+        # (Idea taken from Openbox, but I use GetModifierMapping)
+        mods &= ~state.get_mod_for_key(keycode)
 
-    # If we've grabbed the keyboard, we might not want to listen to modifiers
-    if state.grab_keyboard:
-        cbs += __dispatch_fetch_callbacks(xevent, e.event, 0, keycode, None)
+        if (xevent == xcb.xproto.KeyReleaseEvent and 
+            grabber.grabbed_mods and not (mods & grabber.grabbed_mods)):
+            grabber.key_end(e)
+            return
+
+    cbs = __dispatch_fetch_callbacks(xevent, e.event, mods, keycode, None)
 
     for cb in cbs:
         cb(e=e)

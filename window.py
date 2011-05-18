@@ -1,25 +1,25 @@
 import struct
 
-import xcb.xproto
+import xcb.xproto as xproto
 
-import util
-import icccm
-import ewmh
-import motif
-import event
-import image
+import xpybutil.util as util
+import xpybutil.icccm as icccm
+import xpybutil.ewmh as ewmh
+import xpybutil.motif as motif
+import xpybutil.event as event
+import xpybutil.image as image
 
-import state
+from state import conn, core, rsetup
 import events
 import layers
 import focus
 import rendering
 
 def create(parent, mask, values):
-    wid = state.conn.generate_id()
-    state.conn.core.CreateWindow(state.rsetup.root_depth, wid, parent, 0, 0, 1,
-                                 1, 0, xcb.xproto.WindowClass.InputOutput,
-                                 state.rsetup.root_visual,
+    wid = conn.generate_id()
+    core.CreateWindow(rsetup.root_depth, wid, parent, 0, 0, 1,
+                                 1, 0, xproto.WindowClass.InputOutput,
+                                 rsetup.root_visual,
                                  mask, values)
 
     return wid
@@ -29,16 +29,16 @@ class SimpleWindow(object):
         self.id = wid
 
     def map(self):
-        state.conn.core.MapWindow(self.id)
+        core.MapWindow(self.id)
 
     def unmap(self):
-        state.conn.core.UnmapWindow(self.id)
+        core.UnmapWindow(self.id)
 
     def configure(self, x=None, y=None, width=None, height=None,
                   border_width=None, sibling=None, stack_mode=None):
         mask = 0
         values = []
-        conf = xcb.xproto.ConfigWindow
+        conf = xproto.ConfigWindow
 
         if x is not None:
             self.geom['x'] = x
@@ -84,20 +84,20 @@ class SimpleWindow(object):
             mask |= conf.StackMode
             values.append(stack_mode)
 
-        state.conn.core.ConfigureWindow(self.id, mask, values)
+        core.ConfigureWindow(self.id, mask, values)
 
 class GeometryWindow(SimpleWindow):
     def __init__(self, wid):
         SimpleWindow.__init__(self, wid)
 
-        self._geom = state.conn.core.GetGeometry(self.id)
+        self._geom = core.GetGeometry(self.id)
 
     @property
     def geom(self):
         if self._geom is None:
-            self._geom = state.conn.core.GetGeometry(self.id)
+            self._geom = core.GetGeometry(self.id)
 
-        if isinstance(self._geom, xcb.xproto.GetGeometryCookie):
+        if isinstance(self._geom, xproto.GetGeometryCookie):
             self._geom = self._geom.reply()
 
             self._geom = {
@@ -113,14 +113,14 @@ class Window(GeometryWindow):
     def __init__(self, wid):
         GeometryWindow.__init__(self, wid)
 
-        self._properties = state.conn.core.ListProperties(self.id)
-        self._protocols = icccm.get_wm_protocols(state.conn, self.id)
-        self._hints = icccm.get_wm_hints(state.conn, self.id)
-        self._normal_hints = icccm.get_wm_normal_hints(state.conn, self.id)
-        self._class = icccm.get_wm_class(state.conn, self.id)
-        self._motif = motif.get_hints(state.conn, self.id)
-        self._wmname = ewmh.get_wm_name(state.conn, self.id)
-        self._wmclass = icccm.get_wm_class(state.conn, self.id)
+        self._properties = core.ListProperties(self.id)
+        self._protocols = icccm.get_wm_protocols(conn, self.id)
+        self._hints = icccm.get_wm_hints(conn, self.id)
+        self._normal_hints = icccm.get_wm_normal_hints(conn, self.id)
+        self._class = icccm.get_wm_class(conn, self.id)
+        self._motif = motif.get_hints(conn, self.id)
+        self._wmname = ewmh.get_wm_name(conn, self.id)
+        self._wmclass = icccm.get_wm_class(conn, self.id)
 
     def validate_size(self, width, height):
         nm = self.normal_hints
@@ -185,7 +185,7 @@ class Window(GeometryWindow):
 
     @property
     def properties(self):
-        if isinstance(self._properties, xcb.xproto.ListPropertiesCookie):
+        if isinstance(self._properties, xproto.ListPropertiesCookie):
             self._properties = list(self._properties.reply().atoms)
 
         return self._properties
@@ -237,7 +237,7 @@ class Window(GeometryWindow):
                     'min_aspect_num': 0, 'min_aspect_den': 0,
                     'max_aspect_num': 0, 'max_aspect_den': 0, 'base_width': 0,
                     'base_height': 0,
-                    'win_gravity': xcb.xproto.Gravity.NorthWest}
+                    'win_gravity': xproto.Gravity.NorthWest}
 
         return self._normal_hints
 
@@ -266,7 +266,7 @@ class Window(GeometryWindow):
 
             # If nothing, check WM_NAME...
             if self._wmname is None:
-                self._wmname = icccm.get_wm_name(state.conn, self.id).reply()
+                self._wmname = icccm.get_wm_name(conn, self.id).reply()
 
             # Still nothing... empty string
             if self._wmname is None:
@@ -293,7 +293,7 @@ class Window(GeometryWindow):
         def icon_size(icn_w, icn_h):
             return icn_w * icn_h
 
-        icons = ewmh.get_wm_icon(state.conn, self.id).reply()
+        icons = ewmh.get_wm_icon(conn, self.id).reply()
 
         # Find a valid icon...
         icon = None
@@ -318,7 +318,7 @@ class Window(GeometryWindow):
                         icon = icn
 
             if icon is not None:
-                icon['data'] = image.parse_net_wm_icon(icon['data'])
+                icon['data'] = image.net_wm_icon_to_bgra(icon['data'])
                 icon['mask'] = icon['data']
 
         # The ICCCM way...
@@ -329,10 +329,10 @@ class Window(GeometryWindow):
             pixid = self.hints['icon_pixmap']
             maskid = self.hints['icon_mask']
 
-            w, h, d = image.get_image_from_pixmap(state.conn, pixid)
+            w, h, d = image.get_image_from_pixmap(conn, pixid)
             icon = {'width': w, 'height': h, 'data': d}
 
-            _, _, icon['mask'] = image.get_image_from_pixmap(state.conn,
+            _, _, icon['mask'] = image.get_image_from_pixmap(conn,
                                                              maskid)
 
         # Default icon...
@@ -349,7 +349,7 @@ class Window(GeometryWindow):
 
 def cb_ConfigureRequestEvent(e):
     values = []
-    conf = xcb.xproto.ConfigWindow
+    conf = xproto.ConfigWindow
     mask = e.value_mask
 
     if conf.X & mask:
@@ -375,4 +375,4 @@ def cb_ConfigureRequestEvent(e):
     if conf.StackMode & mask:
         values.append(e.stack_mode)
 
-    state.conn.core.ConfigureWindow(e.window, mask, values)
+    core.ConfigureWindow(e.window, mask, values)

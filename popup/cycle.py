@@ -24,8 +24,8 @@ dialog is hidden, that the window it wants to give focus to still exists.
 
 import xcb.xproto
 
-import image
-import event
+import xpybutil.image as image
+import xpybutil.event as event
 
 import state
 import events
@@ -159,6 +159,7 @@ class CycleWindow(_PopupWindow):
                              width=self.geom['width'] - 2 * c_brdr_sz,
                              height=self.geom['height'] - 2 * c_brdr_sz)
 
+        self.icons = []
         for i, client in enumerate(self.wins):
             icon = IconWindow(self, client)
             self.icons.append(icon)
@@ -177,8 +178,7 @@ class CycleWindow(_PopupWindow):
 
     def hide(self):
         self.unmap()
-        for icon in self.icons[:]:
-            self.icons.remove(icon)
+        for icon in self.icons:
             icon.destroy()
 
         client = self.wins[self.current]
@@ -193,6 +193,7 @@ class CycleWindow(_PopupWindow):
         self.current = 0
         self.showing = False
         self.wins = []
+        del self.icons
 
     def highlight_next(self):
         self.icons[self.current].render_inactive()
@@ -210,28 +211,24 @@ cycle = CycleWindow()
 # Event callback processing. Fairly straight-forward.
 
 def __start():
-    # It is actually very important to initiate the grab first, in an "act
-    # first, ask questions later" type manner. This is due to a key release
-    # event that should *end* the grab being generated before the grab can
-    # take effect. This way, the grab is made as soon as possible, which
-    # prevents ungrab events from sneaking by.
-    grab.grab()
     if not cycle.show():
-        grab.ungrab()
+        return { 'grab': False }
+    else:
+        return { 'grab': True }
 
 def start_next(e):
     if cycle.showing:
         return
 
     cycle.current = 1
-    __start()
+    return __start()
 
 def start_prev(e):
     if cycle.showing:
         return
 
     cycle.current = -1
-    __start()
+    return __start()
 
 def do_next(e):
     cycle.highlight_next()
@@ -243,6 +240,5 @@ def end(e):
     if not cycle.showing:
         return
 
-    grab.ungrab()
     cycle.hide()
 

@@ -1,34 +1,37 @@
+from collections import OrderedDict
 import sys
 
-import xcb, xcb.xproto
+import xcb
+import xcb.xproto as xproto
 
-import cursor
-import keysym
+import xpybutil.cursor as cursor
+import xpybutil.keysym as keysym
 
 d = open('/home/andrew/pyndow.txt', 'w+')
 
-die = False
-conn = xcb.connect()
-setup = conn.get_setup()
+die    = False
+conn   = xcb.connect()
+core   = conn.core
+setup  = conn.get_setup()
 rsetup = setup.roots[0]
-root = rsetup.root
+root   = rsetup.root
 
-rsetup.width_in_pixels = 1920
+# Temporary hack
+rsetup.width_in_pixels  = 1920
 rsetup.height_in_pixels = 1080
 
 pyndow = conn.generate_id()
-conn.core.CreateWindow(rsetup.root_depth, pyndow, root, -1000, -1000, 1,
-                       1, 0, xcb.xproto.WindowClass.InputOutput,
-                       rsetup.root_visual,
-                       xcb.xproto.CW.EventMask |
-                       xcb.xproto.CW.OverrideRedirect,
-                       [xcb.xproto.EventMask.PropertyChange, 1])
-conn.core.MapWindow(pyndow)
+core.CreateWindow(rsetup.root_depth, pyndow, root, -1000, -1000, 1,
+                       1, 0, xproto.WindowClass.InputOutput, rsetup.root_visual,
+                       xproto.CW.EventMask | xproto.CW.OverrideRedirect,
+                       [xproto.EventMask.PropertyChange, 1])
+core.MapWindow(pyndow)
 
-grab_pointer = False
+grab_pointer  = False
 grab_keyboard = False
 
 __kbmap = keysym.get_keyboard_mapping(conn)
+__keystomods = keysym.get_keys_to_mods(conn)
 
 FC = cursor.FontCursor
 cursors = {
@@ -45,6 +48,12 @@ cursors = {
     'TopLeftCorner': cursor.create_font_cursor(conn, FC.TopLeftCorner)
 }
 
+# The set of all windows being managed.
+windows = OrderedDict()
+
+# The set of all existing workspaces.
+workspaces = []
+
 def reconnect():
     global conn
 
@@ -53,7 +62,7 @@ def reconnect():
 def get_kbmap():
     global __kbmap
 
-    if isinstance(__kbmap, xcb.xproto.GetKeyboardMappingCookie):
+    if isinstance(__kbmap, xproto.GetKeyboardMappingCookie):
         __kbmap = __kbmap.reply()
 
     return __kbmap
@@ -63,23 +72,30 @@ def set_kbmap(kbmap):
 
     __kbmap = kbmap
 
+def get_mod_for_key(keycode):
+    return keycode in __keystomods and __keystomods[keycode] or 0
+
+def set_keys_to_mods(ktom):
+    global __keystomods
+
+    __keystomods = ktom
+
 def replay_pointer():
-    conn.core.AllowEventsChecked(xcb.xproto.Allow.ReplayPointer,
-                                 xcb.xproto.Time.CurrentTime).check()
+    core.AllowEventsChecked(xproto.Allow.ReplayPointer,
+                            xproto.Time.CurrentTime).check()
 
 def root_focus():
-    conn.core.SetInputFocusChecked(xcb.xproto.InputFocus.PointerRoot,
-                                   root,
-                                   xcb.xproto.Time.CurrentTime).check()
+    core.SetInputFocusChecked(xproto.InputFocus.PointerRoot, root,
+                              xproto.Time.CurrentTime).check()
 
 def grab():
-    conn.core.GrabServerChecked().check()
+    core.GrabServerChecked().check()
 
 def ungrab():
-    conn.core.UngrabServerChecked().check()
+    core.UngrabServerChecked().check()
 
 def sync():
-    conn.core.GetInputFocus().reply()
+    core.GetInputFocus().reply()
 
 def debug(s):
     print >> d, s
@@ -96,38 +112,5 @@ def debug_obj(o, f=False):
         print >> out, i, getattr(o, i)
     print >> out, '-' * 45
 
-def test(e):
-    print 'ahoy hoy!'
+    out.flush()
 
-class Windows(object):
-    def __init__(self):
-        self.__ordered = []
-        self.__mapping = {}
-
-    def get_ordered(self):
-        return self.__ordered[:]
-
-    def __len__(self):
-        return len(self.__ordered)
-
-    def __setitem__(self, key, value):
-        if key not in self.__ordered:
-            self.__ordered.append(key)
-        self.__mapping[key] = value
-
-    def __delitem__(self, key):
-        if key in self.__ordered:
-            self.__ordered.remove(key)
-            del self.__mapping[key]
-
-    def __getitem__(self, key):
-        return self.__mapping[key]
-
-    def __contains__(self, item):
-        return item in self.__ordered
-
-    def __iter__(self):
-        for client in self.__ordered:
-            yield self.__mapping[client]
-
-wins = Windows()

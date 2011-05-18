@@ -1,7 +1,7 @@
 import xcb.xproto
 
-import ewmh
-import image
+import xpybutil.ewmh as ewmh
+import xpybutil.image as image
 
 import config
 import state
