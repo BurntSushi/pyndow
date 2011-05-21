@@ -226,16 +226,6 @@ class Full(_Frame):
         self.configure_client(width=self.client.win.geom['width'],
                               height=self.client.win.geom['height'])
 
-        # CHANGE THIS
-        # This is bad because we're changing the width/height of the client
-        # on map without good reason. This needs to be a function of the
-        # current layout.
-        #x, y = self.gravitize(client.win.geom['x'], client.win.geom['y'])
-        #self.configure(
-            #x=x, y=y,
-            #width=client.win.geom['width'] - self.pos['client']['width'],
-            #height=client.win.geom['height'] - self.pos['client']['height'])
-
     def configure(self, x=None, y=None, width=None, height=None,
                   border_width=None, sibling=None, stack_mode=None):
         (x, y, width, height,

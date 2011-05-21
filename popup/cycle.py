@@ -74,7 +74,7 @@ class IconWindow(_PopupWindow):
             immask = im.copy()
 
         alpha = 1
-        if self.client.hidden:
+        if not self.client.mapped:
             alpha = 0.3
         icon_im = rendering.blend(im, immask, c_bg, c_icn_sz, c_icn_sz, alpha)
 
@@ -183,12 +183,12 @@ class CycleWindow(_PopupWindow):
 
         client = self.wins[self.current]
 
-        if client.is_alive(force=True):
-            if client.hidden:
-                client.map()
+        if client.is_alive():
+            if client.mapped:
+                client.focus()
+                client.stack_raise()
             else:
-                self.wins[self.current].focus()
-                self.wins[self.current].stack_raise()
+                client.map()
 
         self.current = 0
         self.showing = False

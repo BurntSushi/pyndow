@@ -32,7 +32,7 @@ command.init()
 masks = [ xproto.EventMask.SubstructureNotify 
         | xproto.EventMask.SubstructureRedirect
         | xproto.EventMask.PropertyChange
-        | xproto.EventMask.FocusChange
+        # | xproto.EventMask.FocusChange 
         ]
 state.core.ChangeWindowAttributesChecked(state.root, xproto.CW.EventMask, 
                                          masks).check()
@@ -61,18 +61,6 @@ events.register_keygrab(popup.cycle.start_next, popup.cycle.do_next,
 events.register_keygrab(popup.cycle.start_prev, popup.cycle.do_prev,
                         popup.cycle.end, state.root,
                         config.get_option('cycle_prev'))
-
-# k_cyc_n = config.get_option('cycle_next') 
-# k_cyc_p = config.get_option('cycle_prev') 
-#  
-# events.register_keypress(popup.cycle.start_next, state.root, k_cyc_n) 
-# events.register_keypress(popup.cycle.do_next, state.pyndow, k_cyc_n) 
-#  
-# events.register_keypress(popup.cycle.start_prev, state.root, k_cyc_p) 
-# events.register_keypress(popup.cycle.do_prev, state.pyndow, k_cyc_p) 
-#  
-# events.register_keyrelease(popup.cycle.end, state.pyndow, 'Alt_L') 
-# events.register_keyrelease(popup.cycle.end, state.pyndow, 'Alt_R') 
 
 state.root_focus()
 

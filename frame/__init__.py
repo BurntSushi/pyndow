@@ -181,6 +181,10 @@ class _Frame(object):
         # If resizing, update the client's size too. Make sure to use the
         # proper sizes based on the current frame, and validate!
         # Validation is used here so we know when to stop resizing the frame.
+        # XXX: Does not handle x/y correctly when minimum size is reached.
+        #      I don't think it's possible when the client is sending simple
+        #      configure requests. Perhaps when I support _NET_WM_MOVERESIZE
+        #      things will be better.
         if width or height:
             if width: cw = width + self.pos['client']['width']
             if height: ch = height + self.pos['client']['height']
@@ -189,6 +193,7 @@ class _Frame(object):
 
             if w != cw:
                 width = (w - self.pos['client']['width'])
+
             if h != ch:
                 height = (h - self.pos['client']['height'])
 

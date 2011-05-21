@@ -14,6 +14,8 @@ aname = partial(util.get_atom_name, state.conn)
 def cb_ClientMessage(e):
     if e.window in state.windows:
         print state.windows[e.window].win.wmname
+        print aname(e.type)
+        print '-' * 45
 
     if aname(e.type) == '_PYNDOW_CMD':
         state.debug_obj(e)

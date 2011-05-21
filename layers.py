@@ -1,4 +1,5 @@
 import xcb.xproto
+
 import state
 
 class Layer(object):
@@ -56,10 +57,10 @@ class Layer(object):
 
         for client in self.__stack:
             if sibling is None:
-                client.frame.configure(stack_mode=xcb.xproto.StackMode.Below)
+                client.configure(stack_mode=xcb.xproto.StackMode.Below)
             else:
-                client.frame.configure(sibling=sibling.frame.parent.id,
-                                       stack_mode=xcb.xproto.StackMode.Above)
+                client.configure(sibling=sibling.parent_id(),
+                                 stack_mode=xcb.xproto.StackMode.Above)
 
             sibling = client
 
@@ -78,10 +79,11 @@ class Layer(object):
         self.__stack.insert(0, win)
 
     def add(self, win):
-        """Adds a window to the top of this layer.
-
-        @precondition: The window cannot be in this layer."""
-        assert win not in self
+        """
+        Adds a window to the top of this layer.
+        """
+        if win in self:
+            return
 
         for layer in Layer.__layers:
             if layer == self:
@@ -94,10 +96,11 @@ class Layer(object):
         self.__stack.append(win)
 
     def remove(self, win):
-        """Removes a window from this layer and puts it in the default layer.
-
-        @precondition:  The window must be in this layer."""
-        assert win in self
+        """
+        Removes a window from this layer and puts it in the default layer.
+        """
+        if win not in self:
+            return
 
         win.layer = None
         self.__stack.remove(win)
@@ -106,10 +109,13 @@ class Layer(object):
 
     def top(self):
         """Returns the top most window in this layer."""
-        return self.__stack[-1]
+        return self.visible()[-1]
+
+    def visible(self):
+        return [client for client in self.__stack if client.mapped]
 
     def __len__(self):
-        return len(self.__stack)
+        return len(self.visible())
 
     def __contains__(self, item):
         return item in self.__stack

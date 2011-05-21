@@ -1,6 +1,7 @@
 import xcb.xproto
 
 import state
+import workspace
 
 __stack = []
 
@@ -10,6 +11,8 @@ def get_stack():
 def add(client):
     if client not in __stack:
         __stack.append(client)
+        return True
+    return False
 
 def remove(client):
     if client in __stack:
@@ -22,8 +25,10 @@ def above(client):
     __stack.append(client)
 
 def fallback():
-    # Only use mapped windows for falling back
-    stck = [client for client in __stack if not client.hidden]
+    def fallbackable(c):
+        return (c.mapped
+                and (not c.workspaces or workspace.current() in c.workspaces))
+    stck = [client for client in get_stack() if fallbackable(client)]
 
     # This is *really* important. On occasion, it seems that focus can stay
     # with a destroyed window. If this happens to be the last window, and
@@ -43,9 +48,10 @@ def fallback():
             fallback()
 
 def focused():
-    stck = [client for client in __stack if not client.hidden]
+    stck = [client for client in get_stack() if client.mapped]
 
     if not stck:
         return None
 
     return stck[-1]
+

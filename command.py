@@ -13,6 +13,7 @@ import config
 import events
 import focus
 import misc
+import workspace
 
 save = None
 
@@ -37,8 +38,11 @@ def init():
 def spawn(exc, e):
     misc.spawn(exc)
 
-def focus_switcher(e):
-    print 'Focus switcher!'
+def workspace_left(e):
+    workspace.left()
+
+def workspace_right(e):
+    workspace.right()
 
 def toggle_catchall(e):
     focus.focused().toggle_catchall()

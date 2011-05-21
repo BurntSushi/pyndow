@@ -54,7 +54,6 @@ class Title(_FrameWindow):
     def cb_PropertyNotifyEvent(self, e):
         prop = util.get_atom_name(state.conn, e.atom)
         if prop in ('_NET_WM_NAME', 'WM_NAME'):
-            print self.frame.client.win.wmname
             self.set_text(self.frame.client.win.wmname)
             self.render()
 

@@ -5,7 +5,8 @@ import subprocess
 def spawn(exc):
     if isinstance(exc, basestring):
         exc = exc.split()
-    return subprocess.Popen(exc).pid
+    devnull = open('/dev/null')
+    return subprocess.Popen(exc, stdout=devnull, stderr=devnull).pid
 
 def command(cmd, window, timeout=None, count=None):
     s = 'pyndow-cmd %s %d' % (cmd, window)
