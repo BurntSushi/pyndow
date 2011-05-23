@@ -10,6 +10,7 @@ import xpybutil.ewmh as ewmh
 import xpybutil.event as event
 
 import state
+import hooks
 import window
 import events
 import focus
@@ -48,6 +49,7 @@ class Client(object):
 
         self.workspaces = []
         self.mapped = False
+        self.initial_map = False
         self.__unmap_ignore = 0
 
         state.conn.core.ChangeWindowAttributes(
@@ -114,8 +116,13 @@ class Client(object):
                                                xcb.xproto.CW.EventMask, [])
 
     def unmanage(self):
+        if self.mapped:
+            self.unmapped()
+
         # No more..!
-        focus.remove(self) # It might not be here, but do it anyway
+        for workspace in self.workspaces[:]:
+            workspace.remove(self)
+        focus.remove(self) 
         self.layer.remove(self)
         self.unlisten()
         self.stop_timeout()
@@ -396,6 +403,7 @@ class DockClient(Client):
         state.ungrab()
         # END GRAB
 
+        self.initial_map = True
         self.mapped = True
 
     def unmapped(self, light=False):
@@ -417,9 +425,6 @@ class NormalClient(Client):
         self.frame = self.get_frame()(self)
         self.frame.configure_client(x=x, y=y)
 
-        # Only one of these lines should exist.
-        # Leaning toward the second.
-        self.workspaces = [workspace.current()]
         workspace.current().add(self)
 
         ewmh.set_supported(state.conn, self.win.id, [aid('_NET_WM_MOVERESIZE')])
@@ -438,7 +443,7 @@ class NormalClient(Client):
 
         self.iconified = False
 
-        self.workspaces[0].mapped(self)
+        self.layout().place(self)
 
         # START GRAB
         state.grab()
@@ -448,9 +453,12 @@ class NormalClient(Client):
         state.ungrab()
         # END GRAB
 
+        self.initial_map = True
         self.mapped = True
 
     def maplight(self):
+        assert self.initial_map, 'a full map must be issued before maplight'
+
         if self.mapped:
             return
 
@@ -538,6 +546,9 @@ class NormalClient(Client):
 
     # Start NormalClient specific methods
 
+    def layout(self):
+        return self.workspaces[0].get_layout(self)
+
     def decorate(self, border=False, slim=False):
         if border:
             frame.switch(self.frame, frame.Border)
@@ -550,6 +561,7 @@ class NormalClient(Client):
         frame.switch(self.frame, frame.Nada)
 
     def minimize(self):
+        self.iconified = True
         self.unmap()
 
     def attention_start(self):
@@ -614,23 +626,24 @@ class NormalClient(Client):
     # I think a lot of these callbacks are a bit awkward here.
     # I don't think they'll stay.
     def cb_resize_start(self, e, direction=None):
-        return self.frame.resize_start(e.event, e.root_x, e.root_y, e.event_x,
-                                       e.event_y, direction)
+        return self.layout().resize_start(self, e.root_x, e.root_y, e.event_x,
+                                          e.event_y, direction)
 
     def cb_resize_drag(self, e):
-        return self.frame.resize_drag(e.root_x, e.root_y, e.event_x, e.event_y)
+        return self.layout().resize_drag(self, e.root_x, e.root_y, e.event_x, 
+                                         e.event_y)
 
     def cb_resize_end(self, e):
-        return self.frame.resize_end(e.root_x, e.root_y)
+        return self.layout().resize_end(self, e.root_x, e.root_y)
 
     def cb_move_start(self, e):
-        return self.frame.move_start(e.event, e.root_x, e.root_y)
+        return self.layout().move_start(self, e.root_x, e.root_y)
 
     def cb_move_drag(self, e):
-        return self.frame.move_drag(e.root_x, e.root_y)
+        return self.layout().move_drag(self, e.root_x, e.root_y)
 
     def cb_move_end(self, e):
-        return self.frame.move_end(e.root_x, e.root_y)
+        return self.layout().move_end(self, e.root_x, e.root_y)
 
     # Normal client specific commands
 
@@ -651,12 +664,12 @@ def manage(wid):
     else:
         client = NormalClient(wid)
 
+    state.windows[wid] = client
+
     # If the initial state is iconic, don't map...
     if (not client.win.hints['flags']['State'] or
         client.win.hints['initial_state'] != icccm.State.Iconic):
         client.map()
-
-    state.windows[wid] = client
     return state.windows[wid]
 
 #def manage_existing(wid):

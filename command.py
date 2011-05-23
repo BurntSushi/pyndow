@@ -38,11 +38,27 @@ def init():
 def spawn(exc, e):
     misc.spawn(exc)
 
+def tile(e):
+    workspace.tile()
+
+def untile(e):
+    workspace.untile()
+
 def workspace_left(e):
     workspace.left()
 
 def workspace_right(e):
     workspace.right()
+
+def workspace_with_left(e):
+    client = focus.focused()
+    if client:
+        workspace.with_left(client)
+
+def workspace_with_right(e):
+    client = focus.focused()
+    if client:
+        workspace.with_right(client)
 
 def toggle_catchall(e):
     focus.focused().toggle_catchall()
