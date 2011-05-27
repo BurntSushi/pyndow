@@ -64,7 +64,10 @@ class PyndowConfigParser(ConfigParser.SafeConfigParser):
 
         if 'Keybindings' in self.sections():
             for option in self.options('Keybindings'):
-                retval[option] = self.get('Keybindings', option)
+                if self.get('Keybindings', option).startswith('`'):
+                    retval[option] = [self.get('Keybindings', option)]
+                else:
+                    retval[option] = self.getlist('Keybindings', option)
 
         return retval
 

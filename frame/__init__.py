@@ -175,7 +175,8 @@ class _Frame(object):
         self.configure(x, y, width, height, border_width, sibling, stack_mode)
 
     def configure(self, x=None, y=None, width=None, height=None,
-                  border_width=None, sibling=None, stack_mode=None):
+                  border_width=None, sibling=None, stack_mode=None,
+                  ignore_hints=False):
         cw = ch = w = h = None
 
         # If resizing, update the client's size too. Make sure to use the
@@ -186,16 +187,21 @@ class _Frame(object):
         #      configure requests. Perhaps when I support _NET_WM_MOVERESIZE
         #      things will be better.
         if width or height:
-            if width: cw = width + self.pos['client']['width']
-            if height: ch = height + self.pos['client']['height']
+            if width: 
+                cw = width + self.pos['client']['width']
+            if height: 
+                ch = height + self.pos['client']['height']
 
-            w, h = self.client.win.validate_size(cw, ch)
+            if not ignore_hints:
+                w, h = self.client.win.validate_size(cw, ch)
 
-            if w != cw:
-                width = (w - self.pos['client']['width'])
+                if w != cw:
+                    width = (w - self.pos['client']['width'])
 
-            if h != ch:
-                height = (h - self.pos['client']['height'])
+                if h != ch:
+                    height = (h - self.pos['client']['height'])
+            else:
+                w, h = cw, ch
 
         # The order that the following two configures doesn't seem to matter.
         # Logically, it makes sense that when decreasing the size of a window,

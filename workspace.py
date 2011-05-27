@@ -39,13 +39,12 @@ def view(workspace, focusing=True):
     __current = workspace
 
     for wid, client in state.windows.iteritems():
-        if not client.workspaces:
-            continue # empty list => all workspaces
+        if client.workspace is None:
+            continue # None => all workspaces
 
-        if (old in client.workspaces 
-            and __current not in client.workspaces):
+        if old == client.workspace and __current != client.workspace:
             client.unmap(light=True)
-        elif __current in client.workspaces:
+        elif __current == client.workspace:
             client.maplight()
 
     if focusing:
@@ -55,7 +54,7 @@ def view(workspace, focusing=True):
 
 def get_clients(workspace):
     for _, client in state.windows.iteritems():
-        if not client.workspaces or workspace in client.workspaces:
+        if workspace == client.workspace:
             yield client
 
 def tile():
@@ -67,13 +66,13 @@ def untile():
 def with_left(client):
     work = __get_left()
     if __current.remove(client):
-        work.add(client)
+        work.add_and_assign_layout(client)
         view(work)
 
 def with_right(client):
     work = __get_right()
     if __current.remove(client):
-        work.add(client)
+        work.add_and_assign_layout(client)
         view(work)
 
 def left():
@@ -94,28 +93,43 @@ class Workspace(object):
     def __init__(self, name):
         self.__name = name
         self.floater = layout.floater.FloatLayout(self)
-        self.layouts = []
+        self.layouts = [layout.tile.VerticalLayout(self)]
         self.alternate = None
 
     def add(self, client):
-        if self in client.workspaces:
-            return
-        client.workspaces.append(self)
-        self.floater.add(client)
+        assert client.workspace is None, \
+               '%s is already on workspace %s' % (client, client.workspace)
 
-        if self.alternate is not None:
-            self.alternate.add(client)
+        client.workspace = self
+
+    def add_and_assign_layout(self, client):
+        self.add(client)
+        self.assign_layout(client)
 
     def remove(self, client):
-        if self not in client.workspaces:
+        if self != client.workspace:
             return False
 
-        client.workspaces.remove(self)
-        self.floater.remove(client)
-        for lay in self.layouts:
-            lay.remove(client)
+        self.hide(client)
+        client.workspace = None
 
         return True
+
+    def hide(self, client):
+        # Ensure that it is no longer in any layout
+        if client in self.floater:
+            self.floater.remove(client)
+        for lay in self.layouts:
+            if client in lay:
+                lay.remove(client)
+
+    def assign_layout(self, client):
+        if client not in self.floater:
+            self.floater.add(client)
+            self.floater.save(client)
+
+        if self.alternate is not None and client not in self.alternate:
+            self.alternate.add(client)
 
     def get_layout(self, client):
         if self.alternate is not None and client in self.alternate:
@@ -123,18 +137,21 @@ class Workspace(object):
         return self.floater
 
     def tile(self):
-        self.floater.save()
-        for client in self.floater.clients():
-            self.layouts[0].add(client)
-            self.layouts[0].place(client)
+        self.floater.save_all()
         self.alternate = self.layouts[0]
+        for client in self.floater.clients():
+            self.alternate.add(client)
+
+        self.alternate.place()
 
     def untile(self):
         if self.alternate is None:
             return
 
-        self.floater.restore()
         self.alternate = None
+        self.floater.restore_all()
+        if focus.focused():
+            focus.focused().stack_raise()
 
     @property
     def name(self):

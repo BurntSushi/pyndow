@@ -58,6 +58,9 @@ class Title(_FrameWindow):
             self.render()
 
     def set_text(self, txt):
+        if not len(txt):
+            txt = ' ' # Dirty hack. I guess PIL can't handle empty strings
+
         font_file = '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf'
         font = rendering.create_font(font_file, 15)
 

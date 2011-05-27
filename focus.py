@@ -27,7 +27,7 @@ def above(client):
 def fallback():
     def fallbackable(c):
         return (c.mapped
-                and (not c.workspaces or workspace.current() in c.workspaces))
+                and (c.workspace is None or workspace.current() == c.workspace))
     stck = [client for client in get_stack() if fallbackable(client)]
 
     # This is *really* important. On occasion, it seems that focus can stay

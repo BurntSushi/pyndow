@@ -21,19 +21,20 @@ def init():
     kbs = config.get_keybindings()
     for k in kbs:
         key_string = k
-        cmd = kbs[k]
+        cmds = kbs[k]
         callback = None
+        
+        for cmd in cmds:
+            if cmd not in ('init', 'spawn') and cmd in globals():
+                callback = globals()[cmd]
 
-        if cmd not in ('init', 'spawn') and cmd in globals():
-            callback = globals()[cmd]
+            if cmd.startswith('`') and cmd.endswith('`'):
+                callback = partial(spawn, cmd[1:-1])
 
-        if cmd.startswith('`') and cmd.endswith('`'):
-            callback = partial(spawn, cmd[1:-1])
-
-        if not callback or not events.register_keypress(callback,
-                                                        state.root,
-                                                        key_string):
-            print 'Could not bind %s' % key_string
+            if not callback or not events.register_keypress(callback,
+                                                            state.root,
+                                                            key_string):
+                print 'Could not bind %s to %s' % (key_string, cmd)
 
 def spawn(exc, e):
     misc.spawn(exc)
@@ -59,6 +60,66 @@ def workspace_with_right(e):
     client = focus.focused()
     if client:
         workspace.with_right(client)
+
+def focus_up(e):
+    client = focus.focused()
+    if client:
+        client.layout().focus_up()
+
+def focus_down(e):
+    client = focus.focused()
+    if client:
+        client.layout().focus_down()
+
+def focus_left(e):
+    client = focus.focused()
+    if client:
+        client.layout().focus_left()
+
+def focus_right(e):
+    client = focus.focused()
+    if client:
+        client.layout().focus_right()
+
+def master_increment(e):
+    client = focus.focused()
+    if client:
+        client.layout().master_increment()
+
+def master_decrement(e):
+    client = focus.focused()
+    if client:
+        client.layout().master_decrement()
+
+def master_size_decrease(e):
+    client = focus.focused()
+    if client:
+        client.layout().master_size_decrease()
+
+def master_size_increase(e):
+    client = focus.focused()
+    if client:
+        client.layout().master_size_increase()
+
+def previous(e):
+    client = focus.focused()
+    if client:
+        client.layout().previous()
+
+def next(e):
+    client = focus.focused()
+    if client:
+        client.layout().next()
+
+def move_previous(e):
+    client = focus.focused()
+    if client:
+        client.layout().move_previous()
+
+def move_next(e):
+    client = focus.focused()
+    if client:
+        client.layout().move_next()
 
 def toggle_catchall(e):
     focus.focused().toggle_catchall()

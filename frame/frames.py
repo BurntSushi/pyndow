@@ -227,10 +227,12 @@ class Full(_Frame):
                               height=self.client.win.geom['height'])
 
     def configure(self, x=None, y=None, width=None, height=None,
-                  border_width=None, sibling=None, stack_mode=None):
+                  border_width=None, sibling=None, stack_mode=None,
+                  ignore_hints=False):
         (x, y, width, height,
          border_width, sibling, stack_mode) = _Frame.configure(
-            self, x, y, width, height, border_width, sibling, stack_mode)
+            self, x, y, width, height, border_width, sibling, stack_mode,
+            ignore_hints)
 
         if width:
             self.close.configure(

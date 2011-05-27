@@ -11,24 +11,37 @@ class FloatLayout(Layout):
         self._resizing = None
         self._moving = None
 
-    def place(self, client):
-        if client.initial_map:
-            return
-        
-        client.configure(**self._try_nonoverlapping_xy(client))
+    def add(self, client):
+        Layout.add(self, client)
 
-    def save(self):
-        for client in self.clients():
-            geom = client.frame.parent.geom
-            self._windows[client.win.id] = {
-                'x': geom['x'], 'y': geom['y'],
-                'width': geom['width'], 'height': geom['height']
-            }
+        if not client.initial_map:
+            self.place(client)
 
-    def restore(self):
+    def place(self, client=None):
+        if client is not None:
+            client.configure(**self._try_nonoverlapping_xy(client))
+
+    def save(self, client):
+        assert client.win.id in self._windows
+
+        geom = client.frame.parent.geom
+        self._windows[client.win.id] = {
+            'x': geom['x'], 'y': geom['y'],
+            'width': geom['width'], 'height': geom['height']
+        }
+
+    def restore(self, client):
+        assert client.win.id in self._windows
+
+        client.frame.configure(**self._windows[client.win.id])
+
+    def save_all(self):
         for client in self.clients():
-            geom = self._windows[client.win.id]
-            client.frame.configure(**geom)
+            self.save(client)
+
+    def restore_all(self):
+        for client in self.clients():
+            self.restore(client)
 
     def _try_nonoverlapping_xy(self, client):
         """

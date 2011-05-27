@@ -47,7 +47,7 @@ class Client(object):
     def __init__(self, wid):
         self.win = window.Window(wid)
 
-        self.workspaces = []
+        self.workspace = None
         self.mapped = False
         self.initial_map = False
         self.__unmap_ignore = 0
@@ -120,8 +120,8 @@ class Client(object):
             self.unmapped()
 
         # No more..!
-        for workspace in self.workspaces[:]:
-            workspace.remove(self)
+        if self.workspace is not None:
+            self.workspace.remove(self)
         focus.remove(self) 
         self.layer.remove(self)
         self.unlisten()
@@ -427,7 +427,7 @@ class NormalClient(Client):
 
         workspace.current().add(self)
 
-        ewmh.set_supported(state.conn, self.win.id, [aid('_NET_WM_MOVERESIZE')])
+        # ewmh.set_supported(state.conn, self.win.id, [aid('_NET_WM_MOVERESIZE')]) 
 
     def map(self):
         if self.mapped:
@@ -443,7 +443,7 @@ class NormalClient(Client):
 
         self.iconified = False
 
-        self.layout().place(self)
+        self.workspace.assign_layout(self)
 
         # START GRAB
         state.grab()
@@ -459,7 +459,7 @@ class NormalClient(Client):
     def maplight(self):
         assert self.initial_map, 'a full map must be issued before maplight'
 
-        if self.mapped:
+        if self.mapped or self.iconified:
             return
 
         icccm.set_wm_state(state.conn, self.win.id, icccm.State.Normal, 0)
@@ -480,8 +480,10 @@ class NormalClient(Client):
 
         self.mapped = False
 
-        if not light and fallback:
-            focus.fallback()
+        if not light:
+            if fallback:
+                focus.fallback()
+            self.workspace.hide(self)
 
         state.conn.flush()
 
@@ -504,8 +506,8 @@ class NormalClient(Client):
     def focused(self):
         # If this client's workspace is not the current workspace,
         # then change to this client's workspace.
-        if self.workspaces and workspace.current() != self.workspaces[0]:
-            workspace.view(self.workspaces[0], focusing=False)
+        if self.workspace is not None and workspace.current() != self.workspace:
+            workspace.view(self.workspace, focusing=False)
             self.stack_raise()
 
         focus.above(self)
@@ -547,7 +549,7 @@ class NormalClient(Client):
     # Start NormalClient specific methods
 
     def layout(self):
-        return self.workspaces[0].get_layout(self)
+        return self.workspace.get_layout(self)
 
     def decorate(self, border=False, slim=False):
         if border:
