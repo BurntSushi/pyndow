@@ -14,12 +14,11 @@ import focus
 import misc
 import workspace
 
-from config.keybind import keybinds
+from config.keybind import keybinds, keygrabs
 
 def init():
-    for k in keybinds:
-        key_string = k
-        cmds = keybinds[k]
+    for key_string in keybinds:
+        cmds = keybinds[key_string]
 
         if not isinstance(cmds, list):
             cmds = [cmds]
@@ -38,6 +37,10 @@ def init():
 
             if not events.register_keypress(callback, state.root, key_string):
                 print 'Could not bind %s to %s' % (key_string, cmd)
+
+    for key_string in keygrabs:
+        (start, step, end) = keygrabs[key_string]
+        events.register_keygrab(start, step, end, state.root, key_string)
 
 def spawn(exc, e):
     misc.spawn(exc)

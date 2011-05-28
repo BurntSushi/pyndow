@@ -4,6 +4,7 @@ from client import Client, NormalClient
 from layout.tile import VerticalLayout
 import workspace
 import misc
+import popup.cycle
 
 def with_focused(fun):
     def _with_focused():
@@ -54,4 +55,12 @@ keybinds = {
     'Mod1-period':      with_layout(VerticalLayout.master_increment),
 
     'Control-Mod1-c':   quit,
-}
+    }
+
+keygrabs = {
+    'Mod1-Tab':       (popup.cycle.start_next, popup.cycle.do_next, 
+                       popup.cycle.end),
+    'Mod1-Shift-Tab': (popup.cycle.start_prev, popup.cycle.do_prev,
+                       popup.cycle.end),
+    }
+

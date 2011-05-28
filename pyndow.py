@@ -20,7 +20,6 @@ import grab
 import command
 import client
 import misc
-import popup.cycle
 
 aid = partial(util.get_atom, state.conn)
 
@@ -53,14 +52,6 @@ events.register_callback(xproto.MotionNotifyEvent, grab.drag_do,
                          state.pyndow, None, None, None)
 events.register_callback(xproto.ButtonReleaseEvent, grab.drag_end,
                          state.pyndow, None, None, None)
-
-# events.register_keygrab(popup.cycle.start_next, popup.cycle.do_next, 
-                        # popup.cycle.end, state.root, 
-                        # config.option('cycle_next')) 
-#  
-# events.register_keygrab(popup.cycle.start_prev, popup.cycle.do_prev, 
-                        # popup.cycle.end, state.root, 
-                        # config.option('cycle_prev')) 
 
 state.root_focus()
 
