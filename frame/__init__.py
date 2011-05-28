@@ -6,6 +6,7 @@ import state
 import events
 import window
 import focus
+import config.mousebind as mousebind
 
 def switch(old_frame, new_frame_cb):
     client = old_frame.client
@@ -70,18 +71,7 @@ class Parent(_FrameWindow):
     def __init__(self, _):
         _FrameWindow.__init__(self)
 
-        events.register_drag(self.frame.client.cb_move_start,
-                             self.frame.client.cb_move_drag,
-                             self.frame.client.cb_move_end,
-                             self.id, 'Mod4-1')
-        events.register_drag(self.frame.client.cb_resize_start,
-                             self.frame.client.cb_resize_drag,
-                             self.frame.client.cb_resize_end,
-                             self.id, 'Mod4-3')
-
-        events.register_buttonpress([self.frame.client.cb_focus,
-                                     self.frame.client.cb_stack_raise],
-                                    self.id, '1', propagate=True)
+        mousebind.register('frame', self, self.id)
 
     def render(self):
         if not self.nada:

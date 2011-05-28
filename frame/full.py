@@ -10,6 +10,7 @@ import state
 import events
 import window
 import rendering
+import config.mousebind as mousebind
 
 from frame import _FrameWindow
 
@@ -37,13 +38,11 @@ class Title(_FrameWindow):
         self.configure(x=self.pos['x'], y=self.pos['y'],
                        height=self.pos['height'])
 
-        events.register_drag(self.frame.client.cb_move_start,
-                             self.frame.client.cb_move_drag,
-                             self.frame.client.cb_move_end,
-                             self.id, '1')
         events.register_callback(xcb.xproto.PropertyNotifyEvent,
                                  self.cb_PropertyNotifyEvent,
                                  self.frame.client.win.id)
+
+        mousebind.register('title', self, self.id)
 
         self.set_text(self.frame.client.win.wmname)
 
@@ -102,10 +101,7 @@ class TitleBar(_FrameWindow):
         self.configure(x=self.pos['x'], y=self.pos['y'],
                        height=self.pos['height'])
 
-        events.register_drag(self.frame.client.cb_move_start,
-                             self.frame.client.cb_move_drag,
-                             self.frame.client.cb_move_end,
-                             self.id, '1')
+        mousebind.register('title', self, self.id)
 
         self.map()
 
@@ -167,10 +163,7 @@ class ThinBorder(_FrameWindow):
         self.configure(x=self.pos['x'], y=self.pos['y'],
                        height=self.pos['height'])
 
-        events.register_drag(self.frame.client.cb_move_start,
-                             self.frame.client.cb_move_drag,
-                             self.frame.client.cb_move_end,
-                             self.id, '1')
+        mousebind.register('title', self, self.id)
 
         self.map()
 
@@ -216,10 +209,8 @@ class _WindowButton(_FrameWindow):
                                  self.cb_enter, self.id)
         events.register_callback(xcb.xproto.LeaveNotifyEvent,
                                  self.cb_leave, self.id)
-        events.register_buttonpress(self.cb_buttonpress, self.id, '1',
-                                    grab=False)
-        events.register_buttonrelease([self.cb_buttonrelease, self.cb_action],
-                                      self.id, '1', grab=False)
+
+        mousebind.register('button', self, self.id)
 
         self.setup()
         self.map()
@@ -392,10 +383,7 @@ class Icon(_FrameWindow):
         self.configure(x=self.pos['x'], y=self.pos['y'],
                        width=self.pos['width'], height=self.pos['height'])
 
-        events.register_drag(self.frame.client.cb_move_start,
-                             self.frame.client.cb_move_drag,
-                             self.frame.client.cb_move_end,
-                             self.id, '1')
+        mousebind.register('title', self, self.id)
 
         self.setup()
 

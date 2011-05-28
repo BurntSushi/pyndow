@@ -18,6 +18,7 @@ import layers
 import frame
 import misc
 import workspace
+import config.mousebind as mousebind
 
 # An alias for easy atom grabbing
 # Get atom makes use of an atom cache
@@ -361,8 +362,7 @@ class DockClient(Client):
     def __init__(self, wid):
         Client.__init__(self, wid)
 
-        events.register_buttonpress(self.cb_stack_raise, self.win.id, '1',
-                                    propagate=True)
+        mousebind.register('non-client', self, self.win.id)
 
     def map(self):
         """
