@@ -627,12 +627,12 @@ class Nada(_Frame):
         # Some colors... doesn't matter, they aren't seen
         self.colors = {
             State.Active: { # active
-                'bg': -1,
-                'thinborder': -1
+                'bg': 0,
+                'thinborder': 0
             },
             State.Inactive: { # inactive
-                'bg': -1,
-                'thinborder': -1
+                'bg': 0,
+                'thinborder': 0
             }
         }
 

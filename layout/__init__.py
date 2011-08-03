@@ -1,5 +1,6 @@
 import state
 import focus
+import frame
 
 class Layout(object):
     def __init__(self, workspace):
@@ -8,6 +9,12 @@ class Layout(object):
 
     def place(self, client=None):
         assert False, 'subclass responsibility'
+
+    def focused(self, client):
+        client.frame.set_state(frame.State.Active)
+
+    def unfocused(self, client):
+        client.frame.set_state(frame.State.Inactive)
 
     def add(self, client):
         assert client.win.id not in self._windows
@@ -20,6 +27,38 @@ class Layout(object):
         assert client.win.id in self._windows
 
         del self._windows[client.win.id]
+
+    def remove_one(self, client):
+        assert False, 'subclass responsibility'
+
+    def save(self, client):
+        assert client.win.id in self._windows
+        assert self.workspace.monitor is not None
+
+        wa = self.workspace.workarea
+        geom = client.frame.parent.geom
+        self._windows[client.win.id] = {
+            'x': geom['x'] - wa['x'], 'y': geom['y'] - wa['y'],
+            'width': geom['width'], 'height': geom['height'],
+            'frame': client.frame.__class__
+        }
+
+    def restore(self, client):
+        assert client.win.id in self._windows
+
+        wa = self.workspace.workarea
+        conf = self._windows[client.win.id]
+        client.frame_switch(conf['frame'])
+        client.frame.configure(x=conf['x'] + wa['x'], y=conf['y'] + wa['y'],
+                               width=conf['width'], height=conf['height'])
+
+    def save_all(self):
+        for client in self.clients():
+            self.save(client)
+
+    def restore_all(self):
+        for client in self.clients():
+            self.restore(client)
 
     def clients(self):
         for client in focus.get_stack():

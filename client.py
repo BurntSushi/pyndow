@@ -536,12 +536,13 @@ class NormalClient(Client):
 
         if self.workspace is not None:
             self.workspace.focused()
+            self.workspace.get_layout(self).focused(self)
         else:
             workspace.determine_focus()
 
         focus.above(self)
         self.attention_stop()
-        self.frame.set_state(frame.State.Active)
+        # self.frame.set_state(frame.State.Active) 
 
         for client in focus.get_stack()[:-1]:
             client.unfocused()
@@ -549,13 +550,16 @@ class NormalClient(Client):
     def unfocused(self):
         Client.unfocused(self)
 
-        if (self.catchall and
-            frame.State.CatchAll not in self.frame.allowed_states):
-            self.catchall = False
+        if self.workspace is not None:
+            self.workspace.get_layout(self).unfocused(self)
 
-        self.frame.set_state(
-            frame.State.CatchAll if self.catchall else
-            frame.State.Inactive)
+        # if (self.catchall and 
+            # frame.State.CatchAll not in self.frame.allowed_states): 
+            # self.catchall = False 
+#  
+        # self.frame.set_state( 
+            # frame.State.CatchAll if self.catchall else 
+            # frame.State.Inactive) 
 
     def parent_id(self):
         return self.frame.parent.id
@@ -579,6 +583,9 @@ class NormalClient(Client):
 
     def layout(self):
         return self.workspace.get_layout(self)
+
+    def frame_switch(self, frame_cls):
+        frame.switch(self.frame, frame_cls)
 
     def decorate(self, border=False, slim=False):
         if border:

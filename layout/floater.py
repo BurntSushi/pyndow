@@ -3,6 +3,7 @@ import xpybutil.ewmh as ewmh
 import state
 
 from layout import Layout, tilers
+import frame
 
 class FloatLayout(Layout): 
     def __init__(self, workspace):
@@ -30,37 +31,14 @@ class FloatLayout(Layout):
         if not client.initial_map:
             self.place(client)
 
+        self.save(client)
+
+    def remove_one(self, client):
+        Layout.remove(self, client)
+
     def place(self, client=None):
         if client is not None:
             client.configure(**self._try_nonoverlapping_xy(client))
-
-    def save(self, client):
-        assert client.win.id in self._windows
-        assert self.workspace.monitor is not None
-
-        wa = self.workspace.workarea
-        geom = client.frame.parent.geom
-        self._windows[client.win.id] = {
-            'x': geom['x'] - wa['x'], 'y': geom['y'] - wa['y'],
-            'width': geom['width'], 'height': geom['height']
-        }
-
-    def restore(self, client):
-        assert client.win.id in self._windows
-
-        wa = self.workspace.workarea
-        geom = self._windows[client.win.id]
-        client.frame_full()
-        client.frame.configure(x=geom['x'] + wa['x'], y=geom['y'] + wa['y'],
-                               width=geom['width'], height=geom['height'])
-
-    def save_all(self):
-        for client in self.clients():
-            self.save(client)
-
-    def restore_all(self):
-        for client in self.clients():
-            self.restore(client)
 
     def _try_nonoverlapping_xy(self, client):
         """

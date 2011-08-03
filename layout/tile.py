@@ -25,7 +25,9 @@ class DirectionLayout(Layout):
 
     def add(self, client, force_master=False, doplace=True):
         Layout.add(self, client)
-        
+
+        self.save(client)
+
         if force_master or self._masters() < self.maxmasters:
             self._add_master(client)
         else:
@@ -38,6 +40,8 @@ class DirectionLayout(Layout):
             self.place()
 
     def remove(self, client):
+        self.restore(client)
+
         Layout.remove(self, client)
 
         for leaf in self.root.childs():
@@ -45,7 +49,18 @@ class DirectionLayout(Layout):
                 leaf.parent.remove_child(leaf)
                 break
 
-        client.frame_full()
+    def remove_one(self, client):
+        self.remove(client)
+
+        self._save_proportions() # just in case
+        self._promote()
+        self._cleanup()
+        self.place()
+
+    def remove_all(self):
+        for client in self.clients():
+            self.remove(client)
+
         self._save_proportions() # just in case
         self._promote()
         self._cleanup()

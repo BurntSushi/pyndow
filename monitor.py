@@ -22,9 +22,9 @@ def strut_calculate():
     for client in state.windows.itervalues():
         s = client.strut
         sp = client.strut_partial
-
         if not client.mapped or not any((s, sp)):
             continue
+
         for i, head in enumerate(heads):
             x, y, w, h = head
 

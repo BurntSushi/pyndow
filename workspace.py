@@ -197,15 +197,14 @@ class Workspace(object):
     def hide_client(self, client):
         # Ensure that it is no longer in any layout
         if client in self.floater:
-            self.floater.remove(client)
+            self.floater.remove_one(client)
         for lay in self.layouts:
             if client in lay:
-                lay.remove(client)
+                lay.remove_one(client)
 
     def assign_layout(self, client):
         if client not in self.floater:
             self.floater.add(client)
-            self.floater.save(client)
 
         if self.alternate is not None and client not in self.alternate:
             self.alternate.add(client)
@@ -236,9 +235,6 @@ class Workspace(object):
         self.tile(layoutClass=nextLayout.__class__)
 
     def tile(self, layoutClass=None):
-        if self.alternate is None:
-            self.floater.save_all()
-
         if layoutClass is not None:
             self._add_layout(self._find_layout(layoutClass))
         else:
@@ -256,8 +252,9 @@ class Workspace(object):
         if self.alternate is None:
             return
 
+        self.alternate.remove_all()
         self.alternate = None
-        self.floater.restore_all()
+
         if focus.focused():
             focus.focused().stack_raise()
 

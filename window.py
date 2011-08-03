@@ -12,7 +12,6 @@ import xpybutil.image as image
 from state import conn, core, rsetup
 import events
 import layers
-import focus
 import rendering
 
 def create(parent, mask, values):
