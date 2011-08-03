@@ -15,7 +15,7 @@ options = {
     'frm_border_bg_i':         0x008800,
     'frm_border_bg_c':         0x3366ff,
     'frm_border_thin_clr':     0x000000,
-    'frm_border_brdr_sz':      5,
+    'frm_border_brdr_sz':      3,
     'cycle_brdr_sz':           5,
     'cycle_brdr_clr':          0x585a5d,
     'cycle_bg':                0xcbcbcb,

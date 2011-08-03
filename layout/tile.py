@@ -4,30 +4,29 @@ import state
 import focus
 
 from layout import Layout, TileRoot, TileLeaf, TileHorizontalBox, \
-                   TileVerticalBox, TileBox
+                   TileVerticalBox, TileBox, tilers
 
-class VerticalLayout(Layout): 
+class DirectionLayout(Layout):
     def __init__(self, workspace):
-        Layout.__init__(self, workspace)
+        assert False, 'subclass responsibility'
 
-        self.maxmasters = 1
-
-        self.root = TileRoot()
-        self.root.add_child(TileHorizontalBox(self.root))
-        self.master = TileVerticalBox(self.root.child)
-        self.slave = TileVerticalBox(self.root.child)
-
-        self.proportions = (0.5, 0.5)
+    def workarea_changed(self):
+        self.place()
 
     def place(self, client=None):
-        if self.workspace.alternate is self:
-            self.root.moveresize(0, 0, state.rsetup.width_in_pixels,
-                                 state.rsetup.height_in_pixels)
+        assert self.workspace.monitor is not None
 
-    def add(self, client):
+        wa = self.workspace.workarea
+
+        if self.workspace.alternate is self:
+            for client in self.clients():
+                client.frame_border()
+            self.root.moveresize(wa['x'], wa['y'], wa['width'], wa['height'])
+
+    def add(self, client, force_master=False, doplace=True):
         Layout.add(self, client)
         
-        if self._masters() < self.maxmasters:
+        if force_master or self._masters() < self.maxmasters:
             self._add_master(client)
         else:
             if self._get_focused_section() is self.master:
@@ -35,7 +34,8 @@ class VerticalLayout(Layout):
             else:
                 self._add_slave(client)
 
-        self.place()
+        if doplace:
+            self.place()
 
     def remove(self, client):
         Layout.remove(self, client)
@@ -45,19 +45,17 @@ class VerticalLayout(Layout):
                 leaf.parent.remove_child(leaf)
                 break
 
+        client.frame_full()
+        self._save_proportions() # just in case
         self._promote()
         self._cleanup()
         self.place()
 
     def master_size_increase(self):
-        if self._masters() and self._slaves():
-            self.root.child.proportion_direction('right', self.master, 0.02)
-            self.place()
+        assert False, 'subclass responsibility'
         
     def master_size_decrease(self):
-        if self._masters() and self._slaves():
-            self.root.child.proportion_direction('left', self.slave, 0.02)
-            self.place()
+        assert False, 'subclass responsibility'
 
     def master_increment(self):
         self.maxmasters += 1
@@ -95,18 +93,6 @@ class VerticalLayout(Layout):
             movefrom.switch(moveto)
             self.place()
 
-    def focus_up(self):
-        self._focus_direction('up')
-
-    def focus_down(self):
-        self._focus_direction('down')
-
-    def focus_left(self):
-        self._focus_direction('left')
-
-    def focus_right(self):
-        self._focus_direction('right')
-
     def _cleanup(self):
         if not self._masters() and self.master in self.root.child.children:
             self._save_proportions()
@@ -141,36 +127,7 @@ class VerticalLayout(Layout):
         return True
 
     def _get_direction(self, action):
-        assert action in ('previous', 'next')
-
-        def opposite_for_prev(direction):
-            if action == 'previous':
-                return { 'up':    'down', 'down': 'up', 
-                         'right': 'left', 'left': 'right' }[direction]
-            return direction
-
-        leaf = self._get_focused_leaf()
-        tofocus = None
-
-        if leaf.parent is self.master:
-            tofocus = leaf.leaf_direction(opposite_for_prev('up'))
-            if tofocus is None and self._slaves():
-                first_or_last = 0 if action is 'next' else -1
-                tofocus = self.slave.children[first_or_last]
-        else:
-            tofocus = leaf.leaf_direction(opposite_for_prev('down'))
-            if tofocus is None and self._masters():
-                first_or_last = -1 if action is 'next' else 0
-                tofocus = self.master.children[first_or_last]
-
-        return tofocus
-
-    def _focus_direction(self, direction):
-        leaf = self._get_focused_leaf()
-        if leaf is not None:
-            tofocus = leaf.leaf_direction(direction, shallow=False)
-            if tofocus:
-                tofocus.activate()
+        assert False, 'subclass responsibility'
 
     def _get_focused_leaf(self):
         focused = focus.focused()
@@ -228,8 +185,7 @@ class VerticalLayout(Layout):
                 self._restore_proportions()
         else:
             focused_ind = self._get_focused_index(self.master)
-            self.master.children[focused_ind].split('vertical', client,
-                                                    append=append)
+            self._section_split(self.master, focused_ind, client, append=append)
             self._demote()
 
     def _add_slave(self, client, append=False):
@@ -243,8 +199,10 @@ class VerticalLayout(Layout):
                 self._restore_proportions()
         else:
             focused_ind = self._get_focused_index(self.slave)
-            self.slave.children[focused_ind].split('vertical', client,
-                                                   append=append)
+            self._section_split(self.slave, focused_ind, client, append=append)
+
+    def _section_split(self, section, i, client, append=False):
+        assert False, 'subclass responsibility'
 
     def _masters(self):
         cnt = 0
@@ -269,4 +227,115 @@ class VerticalLayout(Layout):
 
     def _restore_proportions(self):
         self.master.proportion, self.slave.proportion = self.proportions
+
+class VerticalLayout(DirectionLayout):
+    def __init__(self, workspace):
+        Layout.__init__(self, workspace)
+
+        self.maxmasters = 1
+
+        self.root = TileRoot()
+        self.root.add_child(TileHorizontalBox(self.root))
+        self.master = TileVerticalBox(self.root.child)
+        self.slave = TileVerticalBox(self.root.child)
+
+        self.proportions = (0.5, 0.5)
+
+    def _section_split(self, section, i, client, append=False):
+        assert section in (self.master, self.slave)
+
+        section.children[i].split('vertical', client, append=append)
+
+    def master_size_increase(self):
+        if self._masters() and self._slaves():
+            self.root.child.proportion_direction('right', self.master, 0.02)
+            self.place()
+        
+    def master_size_decrease(self):
+        if self._masters() and self._slaves():
+            self.root.child.proportion_direction('left', self.slave, 0.02)
+            self.place()
+
+    def _get_direction(self, action):
+        assert action in ('previous', 'next')
+
+        def opposite_for_prev(direction):
+            if action == 'previous' and direction in ('up', 'down'):
+                return { 'up': 'down', 'down': 'up' }[direction]
+            return direction
+
+        leaf = self._get_focused_leaf()
+        tofocus = None
+
+        if leaf.parent is self.master:
+            tofocus = leaf.leaf_direction(opposite_for_prev('up'), 
+                                          shallow=True)
+            if tofocus is None and self._slaves():
+                first_or_last = 0 if action is 'next' else -1
+                tofocus = self.slave.children[first_or_last]
+        else:
+            tofocus = leaf.leaf_direction(opposite_for_prev('down'), 
+                                          shallow=True)
+            if tofocus is None and self._masters():
+                first_or_last = -1 if action is 'next' else 0
+                tofocus = self.master.children[first_or_last]
+
+        return tofocus
+
+class HorizontalLayout(DirectionLayout):
+    def __init__(self, workspace):
+        Layout.__init__(self, workspace)
+
+        self.maxmasters = 1
+
+        self.root = TileRoot()
+        self.root.add_child(TileVerticalBox(self.root))
+        self.master = TileHorizontalBox(self.root.child)
+        self.slave = TileHorizontalBox(self.root.child)
+
+        self.proportions = (0.5, 0.5)
+
+    def _section_split(self, section, i, client, append=False):
+        assert section in (self.master, self.slave)
+
+        section.children[i].split('horizontal', client, append=append)
+
+    def master_size_increase(self):
+        if self._masters() and self._slaves():
+            self.root.child.proportion_direction('down', self.master, 0.02)
+            self.place()
+        
+    def master_size_decrease(self):
+        if self._masters() and self._slaves():
+            self.root.child.proportion_direction('up', self.slave, 0.02)
+            self.place()
+
+    def _get_direction(self, action):
+        assert action in ('previous', 'next')
+
+        def opposite_for_prev(direction):
+            if action == 'previous' and direction in ('left', 'right'):
+                return { 'left': 'right', 'right': 'left' }[direction]
+            return direction
+
+        leaf = self._get_focused_leaf()
+        tofocus = None
+
+        if leaf.parent is self.master:
+            tofocus = leaf.leaf_direction(opposite_for_prev('left'), 
+                                          shallow=True)
+            if tofocus is None and self._slaves():
+                first_or_last = 0 if action is 'next' else -1
+                tofocus = self.slave.children[first_or_last]
+        else:
+            tofocus = leaf.leaf_direction(opposite_for_prev('right'), 
+                                          shallow=True)
+            if tofocus is None and self._masters():
+                first_or_last = -1 if action is 'next' else 0
+                tofocus = self.master.children[first_or_last]
+
+        return tofocus
+
+tilers[VerticalLayout.__name__] = VerticalLayout
+tilers[HorizontalLayout.__name__] = HorizontalLayout
 

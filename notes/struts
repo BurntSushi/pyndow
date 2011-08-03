@@ -1,0 +1,51 @@
+The key with struts is to only incorporate windows that have struts set that 
+are also *mapped*. In the common case, windows that set struts will appear on 
+all desktops; like panels and other kinds of docks. But, they could still 
+appear on only one desktop.
+
+Since there's a clearly defined action that dictates when struts are 
+changed---which is when a window with struts set is mapped *or* unmapped---we 
+ought to calculate workareas for each physical monitor when that action happens.
+
+Strut calculation should take place in a module called 'monitor', but it 
+ought to be trigged from within the 'Client' class (or an appropriate hook, if 
+I move in that direction).
+
+Given the following invariants:
+
+  - A monitor can contain one and only one workspace at a time.
+  - A workspace can be on one monitor and only one monitor at a time.
+  - A layout can be active on only one workspace at a time.
+
+We can poll the workspace for a workarea rectangle from the layout. The 
+workspace in turn will poll the monitor that it is assigned to.
+
+The layout can then use this rectangle to correctly position windows.
+
+If those struts are changed, each layout should respond to a method call 
+'workarea_changed' that will move windows appropriately. (It is so named 
+because this can also be called if the workspace moves to a different monitor.)
+
+This ought to be easy in a tiling layout, but might be a bit more difficult in 
+a floating layout. In a tiling layout, a simple call to 'place' ought to do the 
+trick. (Since place will use the current workarea rectangle.)
+
+In a floating layout, the following things need to be done:
+
+  1. Windows in a maximized state need to be maximized to the given workarea
+     rectangle. This is easy.
+  2. Windows in a normal state that have an x,y position inside the new strut 
+     space should be moved to the closest possible x,y position that is not in 
+     the new strut space. Namely, if 'x' is in a left or right strut, it should 
+     be modified appropriately to the right or left, respectively. Similarly 
+     with 'y'. 
+  3. Windows that otherwise overlap with new strut space should not be moved or 
+     resized. (I'm making this decision at the moment, because the complexity 
+     here can grow depending upon how strict one gets.)
+
+There should be support for struts on monitor-to-monitor edges. The EWMH 
+standard does not account for this, so we'll need to make reasonable decisions 
+about the strut settings. (For example, a strut covering an entire monitor is 
+bogus.) But this is for the future. Let's just get root window edge struts 
+working first.
+

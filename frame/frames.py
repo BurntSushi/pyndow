@@ -375,19 +375,19 @@ class Border(_Frame):
             'x': self.__crnr_sz,
             'y': 0,
             'width': - (self.__crnr_sz * 2),
-            'height': 5
+            'height': self.__bw
         }
         self.pos['top_left'] = {
             'x': 0,
             'y': 0,
             'width': self.__crnr_sz,
-            'height': 5
+            'height': self.__bw
         }
         self.pos['top_right'] = {
             'x': self.__crnr_sz,
             'y': 0,
             'width': self.__crnr_sz,
-            'height': 5
+            'height': self.__bw
         }
         self.pos['bottom_side'] = {
             'x': self.__crnr_sz,
@@ -491,10 +491,12 @@ class Border(_Frame):
                               height=self.client.win.geom['height'])
 
     def configure(self, x=None, y=None, width=None, height=None,
-                  border_width=None, sibling=None, stack_mode=None):
+                  border_width=None, sibling=None, stack_mode=None,
+                  ignore_hints=False):
         (x, y, width, height,
          border_width, sibling, stack_mode) = _Frame.configure(
-            self, x, y, width, height, border_width, sibling, stack_mode)
+            self, x, y, width, height, border_width, sibling, stack_mode,
+            ignore_hints)
 
         if width:
             self.top_side.configure(

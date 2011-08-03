@@ -55,3 +55,14 @@ def focused():
 
     return stck[-1]
 
+def focus_workspace(work):
+    def mapped_on_workspace(client):
+        return client.mapped and client.workspace is work
+
+    stck = [client for client in get_stack() if mapped_on_workspace(client)]
+
+    if not stck:
+        return None
+
+    return stck[-1]
+

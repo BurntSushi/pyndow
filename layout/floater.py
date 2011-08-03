@@ -2,7 +2,7 @@ import xpybutil.ewmh as ewmh
 
 import state
 
-from layout import Layout
+from layout import Layout, tilers
 
 class FloatLayout(Layout): 
     def __init__(self, workspace):
@@ -10,6 +10,19 @@ class FloatLayout(Layout):
 
         self._resizing = None
         self._moving = None
+
+    def workarea_changed(self):
+        assert self.workspace.monitor is not None
+
+        wa = self.workspace.workarea
+        for client in self.clients():
+            x, y = client.frame.parent.geom['x'], client.frame.parent.geom['y']
+            if x < wa['x']:
+                x += wa['x'] - x
+            if y < wa['y']:
+                y += wa['y'] - y
+
+            client.configure(x=x, y=y)
 
     def add(self, client):
         Layout.add(self, client)
@@ -23,17 +36,23 @@ class FloatLayout(Layout):
 
     def save(self, client):
         assert client.win.id in self._windows
+        assert self.workspace.monitor is not None
 
+        wa = self.workspace.workarea
         geom = client.frame.parent.geom
         self._windows[client.win.id] = {
-            'x': geom['x'], 'y': geom['y'],
+            'x': geom['x'] - wa['x'], 'y': geom['y'] - wa['y'],
             'width': geom['width'], 'height': geom['height']
         }
 
     def restore(self, client):
         assert client.win.id in self._windows
 
-        client.frame.configure(**self._windows[client.win.id])
+        wa = self.workspace.workarea
+        geom = self._windows[client.win.id]
+        client.frame_full()
+        client.frame.configure(x=geom['x'] + wa['x'], y=geom['y'] + wa['y'],
+                               width=geom['width'], height=geom['height'])
 
     def save_all(self):
         for client in self.clients():
@@ -91,21 +110,22 @@ class FloatLayout(Layout):
                            (r2x2, r1y1, r1w - ((r2x1 - r1x1) + r2w), r1h)])
 
         def get_empty_rects():
-            empty = [(0, 0, state.rsetup.width_in_pixels, 
-                      state.rsetup.height_in_pixels)]
+            empty = [(wa['x'], wa['y'], wa['width'], wa['height'])]
 
             for c in self.clients():
                 if c == client:
                     continue
 
                 geom = c.frame.parent.geom
-                clientrect = (geom['x'], geom['y'], geom['width'], geom['height'])
+                clientrect = (geom['x'], geom['y'], 
+                              geom['width'], geom['height'])
                 for i, rect in enumerate(empty[:]):
                     empty.remove(rect)
                     empty += rect_subtract(rect, clientrect)
 
             return empty
 
+        wa = self.workspace.workarea
         cgeom = client.frame.parent.geom
         rects_fit_client = (lambda (x, y, w, h):
                                 w >= cgeom['width'] and h >= cgeom['height'])
@@ -115,7 +135,7 @@ class FloatLayout(Layout):
             empty = sorted(empty, key=lambda (x, y, w, h): (y, x)) # By y then x
             return { 'x': empty[0][0], 'y': empty[0][1] }
         else:
-            return { 'x': 0, 'y': 0 }
+            return { 'x': wa['x'], 'y': wa['y'] }
 
     def resize_start(self, client, root_x, root_y, event_x, event_y,
                      direction=None):
@@ -257,4 +277,6 @@ class FloatLayout(Layout):
 
     def move_end(self, client, root_x, root_y):
         self._moving = None
+
+tilers[FloatLayout.__name__] = FloatLayout
 

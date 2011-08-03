@@ -18,6 +18,7 @@ import layers
 import frame
 import misc
 import workspace
+import monitor
 import config.mousebind as mousebind
 
 # An alias for easy atom grabbing
@@ -52,6 +53,8 @@ class Client(object):
         self.mapped = False
         self.initial_map = False
         self.__unmap_ignore = 0
+
+        self.strut = self.strut_partial = None
 
         state.conn.core.ChangeWindowAttributes(
             self.win.id, xcb.xproto.CW.EventMask,
@@ -235,6 +238,17 @@ class Client(object):
 
         self.win.wmname = new_name
 
+    def update_struts(self):
+        old_strut, old_strut_partial = self.strut, self.strut_partial
+
+        if self.mapped:
+            self.strut = ewmh.get_wm_strut(state.conn, self.win.id).reply()
+            self.strut_partial = ewmh.get_wm_strut_partial(state.conn, 
+                                                           self.win.id).reply()
+
+        if any((old_strut, old_strut_partial, self.strut, self.strut_partial)):
+            monitor.strut_calculate()
+
     # Event callbacks
 
     def cb_stack_raise(self, e):
@@ -333,6 +347,8 @@ class Client(object):
         elif a == 'WM_NORMAL_HINTS':
             self.win.normal_hints = icccm.get_wm_normal_hints(state.conn,
                                                               self.win.id)
+        elif a in ('_NET_WM_STRUT', '_NET_WM_STRUT_PARTIAL'):
+            self.update_struts()
 
         if (e.state == xcb.xproto.Property.Delete and
             e.atom in self.win.properties):
@@ -386,6 +402,8 @@ class DockClient(Client):
 
         self.mapped = True
 
+        self.update_struts()
+
     def maplight(self):
         """
         Mapping a docked client is similar to mapping a normal client, except
@@ -406,10 +424,13 @@ class DockClient(Client):
         self.initial_map = True
         self.mapped = True
 
+        self.update_struts()
+
     def unmapped(self, light=False):
         icccm.set_wm_state(state.conn, self.win.id, icccm.State.Iconic, 0)
 
         self.mapped = False
+        self.update_struts()
 
         state.conn.flush()
 
@@ -455,6 +476,7 @@ class NormalClient(Client):
 
         self.initial_map = True
         self.mapped = True
+        self.update_struts()
 
     def maplight(self):
         assert self.initial_map, 'a full map must be issued before maplight'
@@ -472,6 +494,7 @@ class NormalClient(Client):
         # END GRAB
 
         self.mapped = True
+        self.update_struts()
 
     def unmapped(self, light=False):
         icccm.set_wm_state(state.conn, self.win.id, icccm.State.Iconic, 0)
@@ -479,11 +502,12 @@ class NormalClient(Client):
         self.frame.unmap()
 
         self.mapped = False
+        self.update_struts()
 
         if not light:
             if fallback:
                 focus.fallback()
-            self.workspace.hide(self)
+            self.workspace.hide_client(self)
 
         state.conn.flush()
 
@@ -509,6 +533,11 @@ class NormalClient(Client):
         if self.workspace is not None and workspace.current() != self.workspace:
             workspace.view(self.workspace, focusing=False)
             self.stack_raise()
+
+        if self.workspace is not None:
+            self.workspace.focused()
+        else:
+            workspace.determine_focus()
 
         focus.above(self)
         self.attention_stop()
@@ -582,6 +611,18 @@ class NormalClient(Client):
             self.focused()
         else:
             self.unfocused()
+
+    def frame_full(self):
+        frame.switch(self.frame, frame.Full)
+
+    def frame_border(self):
+        frame.switch(self.frame, frame.Border)
+
+    def frame_slimborder(self):
+        frame.switch(self.frame, frame.SlimBorder)
+    
+    def frame_nada(self):
+        frame.switch(self.frame, frame.Nada)
 
     def toggle_decorations(self):
         if (isinstance(self.frame, frame.Border) or
