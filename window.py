@@ -293,7 +293,15 @@ class Window(GeometryWindow):
         def icon_size(icn_w, icn_h):
             return icn_w * icn_h
 
-        icons = ewmh.get_wm_icon(conn, self.id).reply()
+        try:
+            icons = ewmh.get_wm_icon(conn, self.id).reply()
+        except xproto.BadWindow:
+            return {
+                'data': image.get_data(rendering.openbox),
+                'mask': image.get_data(rendering.openbox),
+                'width': rendering.openbox.size[0],
+                'height': rendering.openbox.size[1]
+                }
 
         # Find a valid icon...
         icon = None

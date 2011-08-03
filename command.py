@@ -1,18 +1,6 @@
-import signal
-import threading
-import time
-from functools import partial
-
-import xcb.xproto
-
-import xpybutil.keysym as keysym
-import xpybutil.icccm as icccm
-
 import state
 import events
-import focus
 import misc
-import workspace
 
 from config.keybind import keybinds, keygrabs
 
@@ -41,43 +29,4 @@ def init():
     for key_string in keygrabs:
         (start, step, end) = keygrabs[key_string]
         events.register_keygrab(start, step, end, state.root, key_string)
-
-def spawn(exc, e):
-    misc.spawn(exc)
-
-def test1(e):
-    focus.focused().decorate()
-
-def test2(e):
-    focus.focused().decorate(border=True)
-
-def test3(e):
-    focus.focused().decorate(slim=True)
-
-def test4(e):
-    focus.focused().undecorate()
-
-def test5(e):
-    client = focus.focused()
-
-    if client:
-        client.attention_start()
-
-def test6(e):
-    client = focus.focused()
-
-    if client:
-        client.attention_stop()
-
-def test7(e):
-    pass
-
-def test8(e):
-    pass
-
-def test9(e):
-    pass
-
-def test0(e):
-    pass
 

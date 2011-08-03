@@ -9,8 +9,14 @@ import focus
 import config.mousebind as mousebind
 
 def switch(old_frame, new_frame_cb):
+    if isinstance(old_frame, new_frame_cb):
+        return
+
     client = old_frame.client
     parent = old_frame.parent
+
+    if not client.is_alive():
+        return
 
     old_frame.switch_off()
     client.frame = new_frame_cb(client, parent)

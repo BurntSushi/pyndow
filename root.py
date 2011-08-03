@@ -9,6 +9,9 @@ import xpybutil.event as event
 import state
 import events
 
+width = state.rsetup.width_in_pixels
+height = state.rsetup.height_in_pixels
+
 aname = partial(util.get_atom_name, state.conn)
 
 def cb_ClientMessage(e):

@@ -52,7 +52,7 @@ cursors = {
 windows = OrderedDict()
 
 # The set of all existing workspaces.
-workspaces = []
+workspaces = None
 
 def reconnect():
     global conn

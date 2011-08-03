@@ -21,26 +21,24 @@ class Layout(object):
 
         del self._windows[client.win.id]
 
-    def hide(self, client):
-        pass
-
     def clients(self):
         for client in focus.get_stack():
             if client.workspace == self.workspace and not client.iconified:
                 if client.layout() == self:
                     yield client
 
-    def focus_up(self):
-        pass
-
-    def focus_down(self):
-        pass
-
-    def focus_right(self):
-        pass
-
-    def focus_left(self):
-        pass
+    def focus_up(self): pass
+    def focus_down(self): pass
+    def focus_right(self): pass
+    def focus_left(self): pass
+    def master_size_increase(self): pass
+    def master_size_decrease(self): pass
+    def master_increment(self): pass
+    def master_decrement(self): pass
+    def previous(self): pass
+    def next(self): pass
+    def move_previous(self): pass
+    def move_next(self): pass
 
     def resize_start(self, client, root_x, root_y, event_x, event_y,
                      direction=None):
@@ -249,10 +247,10 @@ class TileLeaf(TileBox):
         parent, child = self.parent, self
         if not shallow:
             parent, child = self._find_like_parent(boxClass, child_exclude)
-        elif parent and not isinstance(parent, boxClass):
+        elif not isinstance(parent, boxClass):
             parent, child = parent.parent, parent
 
-        if parent and parent.children[child_exclude] != child:
+        if parent.children[child_exclude] != child:
             cs = parent.children
             nexti = cs.index(child) + child_next
             return cs[nexti].select(where=direction, x=self.x,
@@ -495,6 +493,8 @@ def _intoverlap(s1, e1, s2, e2):
         return e1 - s2
 
     return None
+
+tilers = {}
 
 import layout.floater
 import layout.tile
